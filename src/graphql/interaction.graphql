@@ -1,27 +1,27 @@
 type Like {
-  id: ID!
-  user: User!
-  post: Post!
-  createdAt: DateTime!
+	id: ID!
+	user: User!
+	post: Post!
+	createdAt: DateTime!
 }
 
 type Bookmark {
-  id: ID!
-  user: User!
-  post: Post!
-  createdAt: DateTime!
+	id: ID!
+	user: User!
+	post: Post!
+	createdAt: DateTime!
 }
 
 type Follow {
-  id: ID!
-  follower: User!
-  following: User!
-  createdAt: DateTime!
+	id: ID!
+	follower: User!
+	following: User!
+	createdAt: DateTime!
 }
 
 type Block {
-  id: ID!
-  blocker: User!
-  blocked: User!
-  createdAt: DateTime!
+	id: ID!
+	blocker: User!
+	blocked: User!
+	createdAt: DateTime!
 }

@@ -1,33 +1,33 @@
 type Mutation {
-  # Authentication Mutations
-  signUp(username: String!, email: String!, password: String!, displayName: String!): AuthPayload!
-  login(username: String!, password: String!): AuthPayload!
-  logout: Boolean!
-  refreshToken(refreshToken: String!): AuthToken!
-  
-  # User Mutations
-  updateProfile(input: UserProfileInput!): User!
-  updatePassword(currentPassword: String!, newPassword: String!): Boolean!
-  followUser(userId: ID!): Follow!
-  unfollowUser(userId: ID!): Boolean!
-  blockUser(userId: ID!): Block!
-  unblockUser(userId: ID!): Boolean!
-  getBlockedUsers(limit: Int, offset: Int): [User!]!
-  
-  # Post Mutations
-  createPost(input: CreatePostInput!): Post!
-  updatePost(id: ID!, input: UpdatePostInput!): Post!
-  deletePost(id: ID!): Boolean!
-  likePost(postId: ID!): Like!
-  unlikePost(postId: ID!): Boolean!
-  retweetPost(postId: ID!): Post!
-  unretweetPost(postId: ID!): Boolean!
-  quotePost(postId: ID!, content: String!): Post!
-  bookmarkPost(postId: ID!): Bookmark!
-  unbookmarkPost(postId: ID!): Boolean!
-  
-  # Notification Mutations
-  markNotificationAsRead(notificationId: ID!): Notification!
-  markAllNotificationsAsRead: Boolean!
-  deleteNotification(notificationId: ID!): Boolean!
+	# Authentication Mutations
+	signUp(username: String!, email: String!, password: String!, displayName: String!): AuthPayload!
+	login(username: String!, password: String!): AuthPayload!
+	logout: Boolean!
+	refreshToken(refreshToken: String!): AuthToken!
+
+	# User Mutations
+	updateProfile(input: UserProfileInput!): User!
+	updatePassword(currentPassword: String!, newPassword: String!): Boolean!
+	followUser(userId: ID!): Follow!
+	unfollowUser(userId: ID!): Boolean!
+	blockUser(userId: ID!): Block!
+	unblockUser(userId: ID!): Boolean!
+	getBlockedUsers(limit: Int, offset: Int): [User!]!
+
+	# Post Mutations
+	createPost(input: CreatePostInput!): Post!
+	updatePost(id: ID!, input: UpdatePostInput!): Post!
+	deletePost(id: ID!): Boolean!
+	likePost(postId: ID!): Like!
+	unlikePost(postId: ID!): Boolean!
+	retweetPost(postId: ID!): Post!
+	unretweetPost(postId: ID!): Boolean!
+	quotePost(postId: ID!, content: String!): Post!
+	bookmarkPost(postId: ID!): Bookmark!
+	unbookmarkPost(postId: ID!): Boolean!
+
+	# Notification Mutations
+	markNotificationAsRead(notificationId: ID!): Notification!
+	markAllNotificationsAsRead: Boolean!
+	deleteNotification(notificationId: ID!): Boolean!
 }

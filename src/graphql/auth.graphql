@@ -1,11 +1,11 @@
 type AuthToken {
-  accessToken: String!
-  refreshToken: String!
-  expiresIn: Int!
-  tokenType: String!
+	accessToken: String!
+	refreshToken: String!
+	expiresIn: Int!
+	tokenType: String!
 }
 
 type AuthPayload {
-  user: User!
-  token: AuthToken!
+	user: User!
+	token: AuthToken!
 }

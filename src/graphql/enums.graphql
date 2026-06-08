@@ -1,26 +1,26 @@
 enum SortOrder {
-  NEWEST
-  OLDEST
-  POPULAR
+	NEWEST
+	OLDEST
+	POPULAR
 }
 
 enum PostType {
-  TWEET
-  RETWEET
-  REPLY
-  QUOTE
+	TWEET
+	RETWEET
+	REPLY
+	QUOTE
 }
 
 enum NotificationType {
-  LIKE
-  REPLY
-  RETWEET
-  FOLLOW
-  MENTION
+	LIKE
+	REPLY
+	RETWEET
+	FOLLOW
+	MENTION
 }
 
 enum MediaType {
-  IMAGE
-  VIDEO
-  GIF
+	IMAGE
+	VIDEO
+	GIF
 }

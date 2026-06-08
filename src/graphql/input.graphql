@@ -1,37 +1,37 @@
 input CreatePostInput {
-  content: String!
-  replyToId: ID
-  retweetId: ID
-  quoteId: ID
-  media: [MediaInput!]
-  hashtags: [String!]
+	content: String!
+	replyToId: ID
+	retweetId: ID
+	quoteId: ID
+	media: [MediaInput!]
+	hashtags: [String!]
 }
 
 input UpdatePostInput {
-  content: String
-  media: [MediaInput!]
-  hashtags: [String!]
+	content: String
+	media: [MediaInput!]
+	hashtags: [String!]
 }
 
 input MediaInput {
-  url: String!
-  type: MediaType!
-  alt: String
-  thumbnail: String
-  duration: Int
-  width: Int
-  height: Int
+	url: String!
+	type: MediaType!
+	alt: String
+	thumbnail: String
+	duration: Int
+	width: Int
+	height: Int
 }
 
 input UserProfileInput {
-  displayName: String
-  bio: String
-  profileImage: Upload
-  bannerImage: Upload
+	displayName: String
+	bio: String
+	profileImage: Upload
+	bannerImage: Upload
 }
 
 input PaginationInput {
-  limit: Int
-  offset: Int
-  cursor: String
+	limit: Int
+	offset: Int
+	cursor: String
 }

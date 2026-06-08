@@ -1,0 +1,18 @@
+{
+	"useTabs": true,
+	"tabWidth": 4,
+	"endOfLine": "crlf",
+	"singleQuote": false,
+	"trailingComma": "es5",
+	"printWidth": 100,
+	"overrides": [
+		{
+			"files": "*.graphql",
+			"options": {
+				"parser": "graphql",
+				"tabWidth": 4,
+				"useTabs": true
+			}
+		}
+	]
+}

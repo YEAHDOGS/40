@@ -1,0 +1,5 @@
+type ResetCountdown {
+	id: ID!
+	createdAt: DateTime!
+	expiresAt: DateTime!
+}

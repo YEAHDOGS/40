@@ -1,5 +1,5 @@
 type Error {
-  message: String!
-  code: String!
-  field: String
+	message: String!
+	code: String!
+	field: String
 }

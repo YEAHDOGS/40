@@ -1,38 +1,38 @@
 type Query {
-  # User Queries
-  user(id: ID!): User
-  userByUsername(username: String!): User
-  me: User
-  users(search: String, limit: Int, offset: Int): [User!]!
-  followers(userId: ID!, limit: Int, offset: Int): UserConnection!
-  following(userId: ID!, limit: Int, offset: Int): UserConnection!
-  
-  # Post Queries
-  post(id: ID!): Post
-  posts(limit: Int, offset: Int, sortBy: SortOrder): PostConnection!
-  timeline(limit: Int, offset: Int): PostConnection!
-  explore(limit: Int, offset: Int): PostConnection!
-  userPosts(userId: ID!, limit: Int, offset: Int, sortBy: SortOrder): PostConnection!
-  userReplies(userId: ID!, limit: Int, offset: Int): PostConnection!
-  userMedia(userId: ID!, limit: Int, offset: Int): PostConnection!
-  userLikes(userId: ID!, limit: Int, offset: Int): PostConnection!
-  userBookmarks(limit: Int, offset: Int): PostConnection!
-  
-  # Search Queries
-  search(query: String!, limit: Int, offset: Int): SearchResult!
-  searchUsers(query: String!, limit: Int, offset: Int): [User!]!
-  searchPosts(query: String!, limit: Int, offset: Int): [Post!]!
-  searchHashtags(query: String!, limit: Int, offset: Int): [Hashtag!]!
-  
-  # Hashtag Queries
-  hashtag(tag: String!): Hashtag
-  hashtagPosts(tag: String!, limit: Int, offset: Int): PostConnection!
-  trends(limit: Int): [Trend!]!
-  
-  # Notification Queries
-  notifications(limit: Int, offset: Int): NotificationConnection!
-  unreadNotificationsCount: Int!
-  
-  # Feed Queries
-  homeTimeline(limit: Int, offset: Int): PostConnection!
+	# User Queries
+	user(id: ID!): User
+	userByUsername(username: String!): User
+	me: User
+	users(search: String, limit: Int, offset: Int): [User!]!
+	followers(userId: ID!, limit: Int, offset: Int): UserConnection!
+	following(userId: ID!, limit: Int, offset: Int): UserConnection!
+
+	# Post Queries
+	post(id: ID!): Post
+	posts(limit: Int, offset: Int, sortBy: SortOrder): PostConnection!
+	timeline(limit: Int, offset: Int): PostConnection!
+	explore(limit: Int, offset: Int): PostConnection!
+	userPosts(userId: ID!, limit: Int, offset: Int, sortBy: SortOrder): PostConnection!
+	userReplies(userId: ID!, limit: Int, offset: Int): PostConnection!
+	userMedia(userId: ID!, limit: Int, offset: Int): PostConnection!
+	userLikes(userId: ID!, limit: Int, offset: Int): PostConnection!
+	userBookmarks(limit: Int, offset: Int): PostConnection!
+
+	# Search Queries
+	search(query: String!, limit: Int, offset: Int): SearchResult!
+	searchUsers(query: String!, limit: Int, offset: Int): [User!]!
+	searchPosts(query: String!, limit: Int, offset: Int): [Post!]!
+	searchHashtags(query: String!, limit: Int, offset: Int): [Hashtag!]!
+
+	# Hashtag Queries
+	hashtag(tag: String!): Hashtag
+	hashtagPosts(tag: String!, limit: Int, offset: Int): PostConnection!
+	trends(limit: Int): [Trend!]!
+
+	# Notification Queries
+	notifications(limit: Int, offset: Int): NotificationConnection!
+	unreadNotificationsCount: Int!
+
+	# Feed Queries
+	homeTimeline(limit: Int, offset: Int): PostConnection!
 }

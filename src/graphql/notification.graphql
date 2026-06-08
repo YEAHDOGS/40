@@ -1,20 +1,20 @@
 type Notification {
-  id: ID!
-  recipient: User!
-  actor: User!
-  type: NotificationType!
-  post: Post
-  read: Boolean!
-  createdAt: DateTime!
+	id: ID!
+	recipient: User!
+	actor: User!
+	type: NotificationType!
+	post: Post
+	read: Boolean!
+	createdAt: DateTime!
 }
 
 type NotificationEdge {
-  cursor: String!
-  node: Notification!
+	cursor: String!
+	node: Notification!
 }
 
 type NotificationConnection {
-  edges: [NotificationEdge!]!
-  pageInfo: PageInfo!
-  unreadCount: Int!
+	edges: [NotificationEdge!]!
+	pageInfo: PageInfo!
+	unreadCount: Int!
 }
