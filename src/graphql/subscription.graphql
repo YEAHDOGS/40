@@ -1,0 +1,7 @@
+type Subscription {
+  postCreated(userId: ID): Post!
+  postLiked(postId: ID!): Like!
+  postCommented(postId: ID!): Post!
+  notificationReceived(userId: ID!): Notification!
+  userFollowed(userId: ID!): Follow!
+}

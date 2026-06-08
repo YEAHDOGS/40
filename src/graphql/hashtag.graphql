@@ -1,0 +1,8 @@
+type Hashtag {
+  id: ID!
+  tag: String!
+  trendingAt: DateTime
+  usageCount: Int!
+  trendingRank: Int
+  posts(limit: Int, offset: Int, sortBy: SortOrder): [Post!]!
+}

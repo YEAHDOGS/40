@@ -1,0 +1,36 @@
+type User {
+  id: ID!
+  username: String!
+  email: String!
+  displayName: String!
+  bio: String
+  profileImage: String
+  bannerImage: String
+  verified: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  followersCount: Int!
+  followingCount: Int!
+  postsCount: Int!
+  likesCount: Int!
+  isFollowing: Boolean!
+  isFollowedBy: Boolean!
+  isBlocked: Boolean!
+  isBlockedBy: Boolean!
+  followers: [User!]!
+  following: [User!]!
+  posts(limit: Int, offset: Int, sortBy: SortOrder): [Post!]!
+  likes(limit: Int, offset: Int): [Post!]!
+  bookmarks(limit: Int, offset: Int): [Post!]!
+}
+
+type UserEdge {
+  cursor: String!
+  node: User!
+}
+
+type UserConnection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}

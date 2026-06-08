@@ -1,0 +1,5 @@
+type Error {
+  message: String!
+  code: String!
+  field: String
+}

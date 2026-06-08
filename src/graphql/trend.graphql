@@ -1,0 +1,7 @@
+type Trend {
+  id: ID!
+  hashtag: Hashtag!
+  rank: Int!
+  volume: Int!
+  momentum: String!
+}
