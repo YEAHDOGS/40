@@ -5,10 +5,12 @@ This directory contains the modular GraphQL schema definitions organized by doma
 ## File Structure
 
 ### Core Definitions
+
 - **scalars.graphql** - Custom scalar types (DateTime, Upload, JSON)
 - **enums.graphql** - All enumeration types
 
 ### Type Definitions
+
 - **user.graphql** - User account types and relationships
 - **post.graphql** - Post/Tweet types and variations
 - **media.graphql** - Media attachments (images, videos, GIFs)
@@ -17,6 +19,7 @@ This directory contains the modular GraphQL schema definitions organized by doma
 - **notification.graphql** - Notification and alert types
 
 ### Utility Types
+
 - **pagination.graphql** - Cursor-based pagination types
 - **auth.graphql** - Authentication tokens and payloads
 - **search.graphql** - Search result types
@@ -24,6 +27,7 @@ This directory contains the modular GraphQL schema definitions organized by doma
 - **error.graphql** - Error handling types
 
 ### Operations
+
 - **input.graphql** - All input types for mutations
 - **query.graphql** - Root Query type with all query operations
 - **mutation.graphql** - Root Mutation type with all mutations
@@ -39,7 +43,7 @@ import { mergeTypeDefs } from "@graphql-tools/merge";
 import path from "path";
 
 const typesArray = loadFilesSync(path.join(__dirname, "./graphql"), {
-  extensions: ["graphql"],
+	extensions: ["graphql"],
 });
 
 const typeDefs = mergeTypeDefs(typesArray);
@@ -68,6 +72,7 @@ const schema = makeExecutableSchema({ typeDefs: typesArray });
 ### Option 4: Manual concatenation (for development)
 
 Combine all `.graphql` files in order:
+
 1. scalars.graphql
 2. enums.graphql
 3. user.graphql, post.graphql, media.graphql, hashtag.graphql
@@ -79,40 +84,47 @@ Combine all `.graphql` files in order:
 ## Key Features
 
 ### User Management
+
 - User profiles with followers/following
 - User verification status
 - Block and privacy controls
 
 ### Post Types
+
 - Regular tweets
 - Replies (threaded conversations)
 - Retweets (amplification)
 - Quote tweets (commentary)
 
 ### Interactions
+
 - Liking posts
 - Bookmarking for later
 - Following/unfollowing users
 - Blocking users
 
 ### Discovery
+
 - Full-text search (users, posts, hashtags)
 - Trending hashtags
 - Explore feed
 - Trending trends
 
 ### Real-Time
+
 - WebSocket subscriptions for new posts
 - Notification events
 - Activity streams
 
 ### Pagination
+
 - Cursor-based pagination for efficient queries
 - Support for limit/offset pagination
 
 ## Related Resolvers
 
 Each type definition should have corresponding resolvers in your server implementation:
+
 - `src/resolvers/user.js`
 - `src/resolvers/post.js`
 - `src/resolvers/interaction.js`
@@ -122,63 +134,62 @@ Each type definition should have corresponding resolvers in your server implemen
 ## Example Queries
 
 ### Get Home Timeline
+
 ```graphql
 query {
-  homeTimeline(limit: 20, offset: 0) {
-    edges {
-      node {
-        id
-        content
-        author {
-          username
-          displayName
-          profileImage
-        }
-        likesCount
-        repliesCount
-        isLiked
-      }
-    }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
-  }
+	homeTimeline(limit: 20, offset: 0) {
+		edges {
+			node {
+				id
+				content
+				author {
+					username
+					displayName
+					profileImage
+				}
+				likesCount
+				repliesCount
+				isLiked
+			}
+		}
+		pageInfo {
+			hasNextPage
+			endCursor
+		}
+	}
 }
 ```
 
 ### Create a Post
+
 ```graphql
 mutation {
-  createPost(input: {
-    content: "Hello, world!"
-    media: []
-    hashtags: ["hello", "graphql"]
-  }) {
-    id
-    content
-    createdAt
-  }
+	createPost(input: { content: "Hello, world!", media: [], hashtags: ["hello", "graphql"] }) {
+		id
+		content
+		createdAt
+	}
 }
 ```
 
 ### Search Users and Posts
+
 ```graphql
 query {
-  search(query: "javascript", limit: 10) {
-    users {
-      id
-      username
-      displayName
-    }
-    posts {
-      id
-      content
-      author {
-        username
-      }
-    }
-  }
+	search(query: "javascript", limit: 10) {
+		users {
+			id
+			username
+			displayName
+		}
+		posts {
+			id
+			content
+			author {
+				username
+			}
+		}
+	}
 }
 ```
 
