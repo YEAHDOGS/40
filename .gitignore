@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+/src/generated/prisma
+
+# Prisma and Local Database
+*.db
+*.db-journal
+.env

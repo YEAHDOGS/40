@@ -6,12 +6,16 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
-		"preview": "vite preview"
+		"preview": "vite preview",
+		"generate": "prisma generate && node scripts/fix-graphql.js"
 	},
 	"devDependencies": {
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.3.0",
 		"daisyui": "^5.5.1-beta.2",
+		"dotenv": "^17.4.2",
+		"prisma": "^6.4.1",
+		"prisma-generator-graphql-schema": "^0.0.6",
 		"sass-embedded": "^1.100.0",
 		"svelte": "^5.55.5",
 		"tailwindcss": "^4.3.0",
@@ -22,11 +26,15 @@
 		"@graphql-tools/merge": "^9.1.9",
 		"@graphql-tools/mock": "^9.1.7",
 		"@lucide/svelte": "^1.18.0",
+		"@prisma/client": "^6.4.1",
 		"@urql/svelte": "^5.0.0",
 		"date-fns": "^4.4.0",
 		"graphql": "^16.14.2",
 		"graphql-yoga": "^5.21.2",
 		"lucide-svelte": "^1.0.1",
 		"urql": "^5.0.3"
+	},
+	"prisma": {
+		"seed": "node prisma/seed.js"
 	}
 }

@@ -1,10 +1,4 @@
-type Post {
-	id: ID!
-	author: User!
-	content: String!
-	postType: PostType!
-	createdAt: DateTime!
-	updatedAt: DateTime!
+extend type Post {
 	repliesCount: Int!
 	retweetsCount: Int!
 	quotesCount: Int!
@@ -18,10 +12,8 @@ type Post {
 	media: [Media!]
 	hashtags: [Hashtag!]
 	mentions: [User!]
-	replyTo: Post
 	retweetOf: Post
 	quoteOf: Post
-	replies(limit: Int, offset: Int, sortBy: SortOrder): [Post!]!
 	retweets(limit: Int, offset: Int): [Post!]!
 	quotes(limit: Int, offset: Int): [Post!]!
 	likedBy(limit: Int, offset: Int): [User!]!

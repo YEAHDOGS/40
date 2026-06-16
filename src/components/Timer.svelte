@@ -51,9 +51,14 @@
 					strokeWidth={1.5}
 					class="animate-[spin_4s_linear_infinite] text-accent-primary drop-shadow-md"
 				/>
-				<span class="font-bold uppercase tracking-widest text-white/90 drop-shadow-sm text-sm">Global Wipe</span>
+				<span
+					class="font-bold uppercase tracking-widest text-white/90 drop-shadow-sm text-sm"
+					>Global Wipe</span
+				>
 			</div>
-			<span class="text-xs text-white/30 tracking-widest uppercase hidden sm:block">Countdown</span>
+			<span class="text-xs text-white/30 tracking-widest uppercase hidden sm:block"
+				>Countdown</span
+			>
 		</div>
 
 		<!-- Glowing Continuous Numbers -->
@@ -129,11 +134,11 @@
 
 	.digit-value {
 		@apply absolute inset-0 flex items-center justify-center pb-1 text-2xl sm:text-3xl font-bold tabular-nums;
-		
+
 		&.is-primary {
 			@apply text-accent-primary drop-shadow-lg;
 		}
-		
+
 		&.is-secondary {
 			@apply text-white/90 drop-shadow-md;
 		}

@@ -1,14 +1,4 @@
-type User {
-	id: ID!
-	username: String!
-	email: String!
-	displayName: String!
-	bio: String
-	profileImage: String
-	bannerImage: String
-	verified: Boolean!
-	createdAt: DateTime!
-	updatedAt: DateTime!
+extend type User {
 	followersCount: Int!
 	followingCount: Int!
 	postsCount: Int!
@@ -19,8 +9,6 @@ type User {
 	isBlockedBy: Boolean!
 	followers: [User!]!
 	following: [User!]!
-	posts(limit: Int, offset: Int, sortBy: SortOrder): [Post!]!
-	likes(limit: Int, offset: Int): [Post!]!
 	bookmarks(limit: Int, offset: Int): [Post!]!
 }
 

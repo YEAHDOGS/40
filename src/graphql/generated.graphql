@@ -1,0 +1,38 @@
+type User {
+  id: String!
+  username: String!
+  email: String!
+  displayName: String!
+  bio: String
+  profileImage: String
+  bannerImage: String
+  verified: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  posts: [Post!]!
+  likes: [Like!]!
+}
+
+type Post {
+  id: String!
+  content: String!
+  postType: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  authorId: String!
+  author: User!
+  replyToId: String
+  replyTo: Post
+  replies: [Post!]!
+  likes: [Like!]!
+}
+
+type Like {
+  id: String!
+  createdAt: DateTime!
+  userId: String!
+  user: User!
+  postId: String!
+  post: Post!
+}
+
