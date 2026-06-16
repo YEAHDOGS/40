@@ -1,85 +1,103 @@
 @import "tailwindcss";
 
 @theme {
-  --color-base-bg: var(--theme-bg);
-  --color-base-surface: var(--theme-surface);
-  --color-base-border: var(--theme-border);
-  --color-accent-primary: var(--theme-accent-primary);
-  --color-accent-secondary: var(--theme-accent-secondary);
-  --color-text-main: var(--theme-text-main);
-  --color-text-muted: var(--theme-text-muted);
-  --font-sans: "Space Grotesk", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+	--color-base-bg: var(--theme-bg);
+	--color-base-surface: var(--theme-surface);
+	--color-base-border: var(--theme-border);
+	--color-accent-primary: var(--theme-accent-primary);
+	--color-accent-secondary: var(--theme-accent-secondary);
+	--color-text-main: var(--theme-text-main);
+	--color-text-muted: var(--theme-text-muted);
+	--font-sans: "Space Grotesk", sans-serif;
+	--font-mono: "JetBrains Mono", monospace;
 }
 
 @layer base {
-  :root {
-    /* Default Theme: Batman Beyond meets The Matrix */
-    --theme-bg: #000000;
-    --theme-surface: #0a0a0a;
-    --theme-border: #1a1a1a;
-    --theme-accent-primary: #ff003c; /* Cyberpunk Red */
-    --theme-accent-secondary: #00ff41; /* Matrix Green */
-    --theme-text-main: #f0f0f0;
-    --theme-text-muted: #666666;
-  }
+	:root {
+		/* Default Theme: Batman Beyond meets The Matrix */
+		--theme-bg: #000000;
+		--theme-surface: #0a0a0a;
+		--theme-border: #1a1a1a;
+		--theme-accent-primary: #ff003c;
+		/* Cyberpunk Red */
+		--theme-accent-secondary: #00ff41;
+		/* Matrix Green */
+		--theme-text-main: #f0f0f0;
+		--theme-text-muted: #666666;
+	}
 
-  body {
-    @apply bg-base-bg text-text-main min-h-screen overflow-x-hidden;
-    font-family: var(--font-sans);
-    /* Subtle grid background to match the matrix/l33t vibe */
-    background-image: 
-      linear-gradient(to right, rgba(255, 0, 60, 0.05) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 0, 60, 0.05) 1px, transparent 1px);
-    background-size: 30px 30px;
-    background-attachment: fixed;
-  }
+	body {
+		@apply bg-base-bg text-text-main min-h-screen overflow-x-hidden;
+		font-family: var(--font-sans);
+		/* Subtle grid background to match the matrix/l33t vibe */
+		background-image:
+			linear-gradient(to right, rgba(255, 0, 60, 0.05) 1px, transparent 1px),
+			linear-gradient(to bottom, rgba(255, 0, 60, 0.05) 1px, transparent 1px);
+		background-size: 30px 30px;
+		background-attachment: fixed;
+	}
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-sans);
-    font-weight: 700;
-    letter-spacing: -0.05em;
-    text-transform: uppercase;
-  }
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-family: var(--font-sans);
+		font-weight: 700;
+		letter-spacing: -0.05em;
+		text-transform: uppercase;
+	}
 
-  code, pre {
-    font-family: var(--font-mono);
-  }
+	code,
+	pre {
+		font-family: var(--font-mono);
+	}
 }
 
 @layer utilities {
-  .sharp-panel {
-    @apply bg-base-surface border border-base-border shadow-[4px_4px_0px_0px_var(--theme-border)] transition-all duration-75 ease-out;
-  }
-  .sharp-panel:hover {
-    @apply border-accent-secondary shadow-[4px_4px_0px_0px_var(--theme-accent-secondary)] -translate-y-[1px];
-  }
-  .sharp-card {
-    @apply bg-base-bg border border-base-border transition-all duration-75 ease-out;
-  }
-  .sharp-card:hover {
-    @apply border-accent-primary shadow-[2px_2px_0px_0px_var(--theme-accent-primary)];
-  }
-  .button-primary {
-    @apply px-5 py-2 bg-accent-primary text-black font-bold uppercase tracking-widest border border-accent-primary transition-all duration-75 ease-out flex items-center justify-center shadow-[4px_4px_0px_0px_var(--theme-accent-secondary)];
-  }
-  .button-primary:hover {
-    @apply bg-accent-secondary border-accent-secondary text-black shadow-[2px_2px_0px_0px_var(--theme-accent-primary)] translate-y-[2px] translate-x-[2px];
-  }
-  .button-primary:disabled {
-    @apply opacity-50 cursor-not-allowed hover:translate-y-0 hover:translate-x-0 hover:shadow-[4px_4px_0px_0px_var(--theme-accent-secondary)] hover:bg-accent-primary hover:border-accent-primary;
-  }
-  .button-secondary {
-    @apply px-4 py-2 bg-transparent text-text-main border border-base-border font-mono text-sm uppercase transition-all duration-75 ease-out;
-  }
-  .button-secondary:hover {
-    @apply border-accent-secondary text-accent-secondary bg-accent-secondary/10;
-  }
-  .input-sharp {
-    @apply bg-base-bg border border-base-border px-4 py-3 text-text-main placeholder-text-muted outline-none transition-all duration-75 ease-out font-mono text-sm focus:border-accent-secondary focus:shadow-[2px_2px_0px_0px_var(--theme-accent-secondary)] w-full;
-  }
-  .text-glitch {
-    @apply font-bold text-accent-primary uppercase tracking-tighter;
-    text-shadow: 2px 0 0 var(--theme-accent-secondary), -2px 0 0 blue;
-  }
+	.sharp-panel {
+		@apply bg-base-surface border border-base-border shadow-[4px_4px_0px_0px_var(--theme-border)] transition-all duration-75 ease-out;
+	}
+
+	.sharp-panel:hover {
+		@apply border-accent-secondary shadow-[4px_4px_0px_0px_var(--theme-accent-secondary)] -translate-y-[1px];
+	}
+
+	.sharp-card {
+		@apply bg-base-bg border border-base-border transition-all duration-75 ease-out;
+	}
+
+	.sharp-card:hover {
+		@apply border-accent-primary shadow-[2px_2px_0px_0px_var(--theme-accent-primary)];
+	}
+
+	.button-primary {
+		@apply px-5 py-2 bg-accent-primary text-black font-bold uppercase tracking-widest border border-accent-primary transition-all duration-75 ease-out flex items-center justify-center shadow-[4px_4px_0px_0px_var(--theme-accent-secondary)];
+	}
+
+	.button-primary:hover {
+		@apply bg-accent-secondary border-accent-secondary text-black shadow-[2px_2px_0px_0px_var(--theme-accent-primary)] translate-y-[2px] translate-x-[2px];
+	}
+
+	.button-primary:disabled {
+		@apply opacity-50 cursor-not-allowed hover:translate-y-0 hover:translate-x-0 hover:shadow-[4px_4px_0px_0px_var(--theme-accent-secondary)] hover:bg-accent-primary hover:border-accent-primary;
+	}
+
+	.button-secondary {
+		@apply px-4 py-2 bg-transparent text-text-main border border-base-border font-mono text-sm uppercase transition-all duration-75 ease-out;
+	}
+
+	.button-secondary:hover {
+		@apply border-accent-secondary text-accent-secondary bg-accent-secondary/10;
+	}
+
+	.input-sharp {
+		@apply bg-base-bg border border-base-border px-4 py-3 text-text-main placeholder-text-muted outline-none transition-all duration-75 ease-out font-mono text-sm focus:border-accent-secondary focus:shadow-[2px_2px_0px_0px_var(--theme-accent-secondary)] w-full;
+	}
+
+	.text-glitch {
+		@apply font-bold text-accent-primary uppercase tracking-tighter;
+		text-shadow: 2px 0 0 var(--theme-accent-secondary), -2px 0 0 blue;
+	}
 }
