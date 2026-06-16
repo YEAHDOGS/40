@@ -1,89 +1,47 @@
 <script>
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from './assets/vite.svg'
-  import heroImg from './assets/hero.png'
-  import Counter from './lib/Counter.svelte'
+  import { setContext, onMount } from 'svelte';
+  import { Client, cacheExchange, fetchExchange } from '@urql/svelte';
+  
+  import Layout from './components/Layout.svelte';
+  import CreatePost from './components/CreatePost.svelte';
+  import Feed from './components/Feed.svelte';
+  import Settings from './components/Settings.svelte';
+  import { initTheme } from './lib/theme.js';
+
+  // Initialize the urql GraphQL client
+  // Pointing to our local Vite-plugin Yoga server
+  const client = new Client({
+    url: '/graphql',
+    exchanges: [cacheExchange, fetchExchange]
+  });
+
+  // Set the client in Svelte context so all child components can access it
+  setContext('urql', client);
+
+  let currentView = $state('home');
+
+  onMount(() => {
+    initTheme();
+  });
 </script>
 
-<section id="center">
-  <div class="hero">
-    <img src={heroImg} class="base" width="170" height="179" alt="" />
-    <img src={svelteLogo} class="framework" alt="Svelte logo" />
-    <img src={viteLogo} class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/App.svelte</code> and save to test <code>HMR</code></p>
-  </div>
-  <Counter />
-</section>
+<Layout bind:currentView>
+  <div class="max-w-2xl mx-auto">
+    {#if currentView === 'home'}
+      <!-- Post Composer -->
+      <CreatePost />
+      
+      <!-- Timeline Filter/Tabs -->
+      <div class="flex items-center space-x-6 mb-6 px-2 border-b border-base-border">
+        <button class="pb-3 text-accent-secondary font-bold font-mono border-b-2 border-accent-secondary transition-colors uppercase tracking-widest text-sm">> FOR_YOU</button>
+        <button class="pb-3 text-text-muted font-mono hover:text-text-main transition-colors uppercase tracking-widest text-sm">FOLLOWING</button>
+        <button class="pb-3 text-text-muted font-mono hover:text-text-main transition-colors uppercase tracking-widest text-sm hidden sm:block">RANDOM_NODE</button>
+      </div>
 
-<div class="ticks"></div>
-
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true">
-      <use href="/icons.svg#documentation-icon"></use>
-    </svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank" rel="noreferrer">
-          <img class="logo" src={viteLogo} alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://svelte.dev/" target="_blank" rel="noreferrer">
-          <img class="button-icon" src={svelteLogo} alt="" />
-          Learn more
-        </a>
-      </li>
-    </ul>
+      <!-- Timeline Feed -->
+      <Feed />
+    {:else if currentView === 'config'}
+      <Settings />
+    {/if}
   </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true">
-      <use href="/icons.svg#social-icon"></use>
-    </svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li>
-        <a href="https://github.com/vitejs/vite" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#github-icon"></use>
-          </svg>
-          GitHub
-        </a>
-      </li>
-      <li>
-        <a href="https://chat.vite.dev/" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#discord-icon"></use>
-          </svg>
-          Discord
-        </a>
-      </li>
-      <li>
-        <a href="https://x.com/vite_js" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#x-icon"></use>
-          </svg>
-          X.com
-        </a>
-      </li>
-      <li>
-        <a href="https://bsky.app/profile/vite.dev" target="_blank" rel="noreferrer">
-          <svg class="button-icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#bluesky-icon"></use>
-          </svg>
-          Bluesky
-        </a>
-      </li>
-    </ul>
-  </div>
-</section>
-
-<div class="ticks"></div>
-<section id="spacer"></section>
+</Layout>
