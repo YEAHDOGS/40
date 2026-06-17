@@ -1,23 +1,55 @@
 <script>
-	import { onMount } from "svelte";
-	import { Timer as TimerIcon } from "lucide-svelte";
+	import { onMount, getContext } from "svelte";
+	import { Timer as TimerIcon, AlertTriangle } from "lucide-svelte";
 	import { fly } from "svelte/transition";
+	import { queryStore, mutationStore, gql } from "@urql/svelte";
 
-	// Mock the global deletion date
-	const endDate = new Date();
-	endDate.setDate(endDate.getDate() + 15);
-	endDate.setHours(endDate.getHours() + 14);
+	const NextWipeQuery = gql`
+		query GetNextWipe {
+			nextWipe
+		}
+	`;
 
+	const TriggerWipeMutation = gql`
+		mutation TriggerWipe {
+			triggerWipe
+		}
+	`;
+
+	const client = getContext("urql");
+	const wipeQuery = queryStore({
+		client,
+		query: NextWipeQuery,
+		requestPolicy: "cache-and-network"
+	});
+
+	let endDate = $state(null);
 	let timeLeft = $state({ days: 0, hours: 0, minutes: 0, seconds: 0, ms: 0 });
 	let frame = 0;
 
+	$effect(() => {
+		if ($wipeQuery.data && $wipeQuery.data.nextWipe) {
+			endDate = new Date($wipeQuery.data.nextWipe);
+		}
+	});
+
 	function updateTimer() {
+		if (!endDate) {
+			frame = requestAnimationFrame(updateTimer);
+			return;
+		}
+
 		const now = new Date();
 		const diff = endDate.getTime() - now.getTime();
 
 		if (diff <= 0) {
 			timeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0, ms: 0 };
-			return;
+			// Trigger the global wipe if we hit 0!
+			client.mutation(TriggerWipeMutation).toPromise().then(() => {
+				// The backend updates globalNextWipe, so we should refetch
+				wipeQuery.reexecute({ requestPolicy: 'network-only' });
+			});
+			return; // wait for next cycle
 		}
 
 		timeLeft = {

@@ -35,4 +35,8 @@ type Query {
 
 	# Feed Queries
 	homeTimeline(limit: Int, offset: Int): PostConnection!
+	recommendedTimeline(limit: Int, offset: Int): PostConnection!
+
+	# System Queries
+	nextWipe: DateTime!
 }

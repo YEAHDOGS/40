@@ -1,11 +1,7 @@
-type Notification {
-	id: ID!
+extend type Notification {
 	recipient: User!
 	actor: User!
-	type: NotificationType!
 	post: Post
-	read: Boolean!
-	createdAt: DateTime!
 }
 
 type NotificationEdge {

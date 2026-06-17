@@ -7,8 +7,6 @@ extend type User {
 	isFollowedBy: Boolean!
 	isBlocked: Boolean!
 	isBlockedBy: Boolean!
-	followers: [User!]!
-	following: [User!]!
 	bookmarks(limit: Int, offset: Int): [Post!]!
 }
 

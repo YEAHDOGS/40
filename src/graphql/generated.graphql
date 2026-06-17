@@ -7,10 +7,17 @@ type User {
   profileImage: String
   bannerImage: String
   verified: Boolean!
+  movies: String
+  books: String
+  music: String
   createdAt: DateTime!
   updatedAt: DateTime!
   posts: [Post!]!
   likes: [Like!]!
+  followers: [Follow!]!
+  following: [Follow!]!
+  notifications: [Notification!]!
+  gameScores: [GameScore!]!
 }
 
 type Post {
@@ -24,7 +31,12 @@ type Post {
   replyToId: String
   replyTo: Post
   replies: [Post!]!
+  repostOfId: String
+  repostOf: Post
+  reposts: [Post!]!
   likes: [Like!]!
+  media: [Media!]!
+  hashtags: [PostHashtag!]!
 }
 
 type Like {
@@ -34,5 +46,55 @@ type Like {
   user: User!
   postId: String!
   post: Post!
+}
+
+type Follow {
+  id: String!
+  createdAt: DateTime!
+  followerId: String!
+  follower: User!
+  followingId: String!
+  following: User!
+}
+
+type Media {
+  id: String!
+  url: String!
+  mediaType: String!
+  postId: String!
+  post: Post!
+}
+
+type Hashtag {
+  id: String!
+  tag: String!
+  createdAt: DateTime!
+  posts: [PostHashtag!]!
+}
+
+type PostHashtag {
+  postId: String!
+  post: Post!
+  hashtagId: String!
+  hashtag: Hashtag!
+}
+
+type Notification {
+  id: String!
+  type: String!
+  read: Boolean!
+  createdAt: DateTime!
+  userId: String!
+  user: User!
+  sourceId: String
+}
+
+type GameScore {
+  id: String!
+  gameName: String!
+  score: Int!
+  createdAt: DateTime!
+  userId: String!
+  user: User!
 }
 

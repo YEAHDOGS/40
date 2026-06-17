@@ -26,8 +26,11 @@ input MediaInput {
 input UserProfileInput {
 	displayName: String
 	bio: String
-	profileImage: Upload
-	bannerImage: Upload
+	profileImage: String
+	bannerImage: String
+	movies: String
+	books: String
+	music: String
 }
 
 input PaginationInput {

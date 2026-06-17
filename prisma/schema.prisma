@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -24,11 +21,20 @@ model User {
   profileImage   String?
   bannerImage    String?
   verified       Boolean  @default(false)
+  movies         String?
+  books          String?
+  music          String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   posts          Post[]   @relation("UserPosts")
   likes          Like[]
+  
+  followers      Follow[] @relation("UserFollowers")
+  following      Follow[] @relation("UserFollowing")
+  
+  notifications  Notification[]
+  gameScores     GameScore[]
 }
 
 model Post {
@@ -45,7 +51,13 @@ model Post {
   replyTo        Post?    @relation("PostReplies", fields: [replyToId], references: [id])
   replies        Post[]   @relation("PostReplies")
 
+  repostOfId     String?
+  repostOf       Post?    @relation("PostReposts", fields: [repostOfId], references: [id])
+  reposts        Post[]   @relation("PostReposts")
+
   likes          Like[]
+  media          Media[]
+  hashtags       PostHashtag[]
 }
 
 model Like {
@@ -57,4 +69,60 @@ model Like {
   post      Post     @relation(fields: [postId], references: [id])
 
   @@unique([userId, postId])
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  followerId  String
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id])
+  followingId String
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+}
+
+model Media {
+  id        String   @id @default(uuid())
+  url       String
+  mediaType String   // "IMAGE" or "VIDEO"
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id])
+}
+
+model Hashtag {
+  id        String   @id @default(uuid())
+  tag       String   @unique
+  createdAt DateTime @default(now())
+  posts     PostHashtag[]
+}
+
+model PostHashtag {
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id])
+  hashtagId String
+  hashtag   Hashtag  @relation(fields: [hashtagId], references: [id])
+
+  @@id([postId, hashtagId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  type      String   // "LIKE", "REPLY", "FOLLOW", "REPOST"
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  sourceId  String?  // The ID of the user/post that triggered it
+}
+
+model GameScore {
+  id        String   @id @default(uuid())
+  gameName  String   // "SNAKE", "PONG"
+  score     Int
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
 }

@@ -1,7 +1,4 @@
-type Media {
-	id: ID!
-	url: String!
-	type: MediaType!
+extend type Media {
 	alt: String
 	thumbnail: String
 	duration: Int

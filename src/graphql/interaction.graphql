@@ -7,12 +7,7 @@ type Bookmark {
 	createdAt: DateTime!
 }
 
-type Follow {
-	id: ID!
-	follower: User!
-	following: User!
-	createdAt: DateTime!
-}
+
 
 type Block {
 	id: ID!

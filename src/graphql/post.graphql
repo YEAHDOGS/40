@@ -10,7 +10,6 @@ extend type Post {
 	isBookmarked: Boolean!
 	isReplyTo: Boolean!
 	media: [Media!]
-	hashtags: [Hashtag!]
 	mentions: [User!]
 	retweetOf: Post
 	quoteOf: Post
