@@ -19,4 +19,10 @@ Our terms of service prevent exporting anything from the website anywhere extern
 - Pixel art multiplayer creator
 - Multiplayer games
 - Web, Android, iOS, Desktop
+- Music sharing and hosting, playlist sharing and stats, live listening dj sets and watch party chatrooms
+- 3D virtual world rooms, with full customization and designer economy
+- Dating
+- Forty Marketplace
+- Ad free, we do not serve or host advertisements. Nothing in feed, no banners
+- Forty Map, to see nearby events, people, and places
 
