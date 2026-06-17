@@ -10,13 +10,17 @@
 	import Profile from "./components/Profile.svelte";
 	import Arcade from "./components/Arcade.svelte";
 	import Notifications from "./components/Notifications.svelte";
+	import PostDetail from "./components/PostDetail.svelte";
 	import { initTheme } from "./lib/theme.js";
 
 	// Initialize the urql GraphQL client
 	// Pointing to our local Vite-plugin Yoga server
 	const client = new Client({
 		url: "/graphql",
-		exchanges: [cacheExchange, fetchExchange],
+		exchanges: [
+			cacheExchange,
+			fetchExchange
+		],
 		fetchOptions: () => {
 			const token = localStorage.getItem("40forty_token");
 			return {
@@ -31,6 +35,7 @@
 	let isAuthenticated = $state(false);
 	let currentUser = $state(null);
 	let currentView = $state("home");
+	let selectedPostId = $state(null);
 
 	onMount(() => {
 		initTheme();
@@ -81,7 +86,9 @@
 				</div>
 
 				<!-- Timeline Feed -->
-				<Feed />
+				<Feed onSelectPost={(id) => { selectedPostId = id; currentView = "post"; }} />
+			{:else if currentView === "post"}
+				<PostDetail postId={selectedPostId} onBack={() => (currentView = "home")} />
 			{:else if currentView === "config"}
 				<Settings />
 			{:else if currentView === "profile"}

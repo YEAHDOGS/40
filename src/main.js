@@ -1,4 +1,5 @@
 import { mount } from 'svelte'
+import './lib/aop.js'
 import './app.css'
 // @ts-ignore
 import App from './App.svelte'

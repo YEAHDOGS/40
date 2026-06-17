@@ -49,6 +49,7 @@
 	});
 
 	const client = getContext("urql");
+	let { onSelectPost } = $props();
 
 	function handleLike(postId) {
 		client.mutation(gql`mutation { likePost(postId: "${postId}") { id } }`).toPromise();
@@ -125,7 +126,7 @@
 
 					<div class="flex-1 min-w-0">
 						<!-- Header -->
-						<div class="flex items-center justify-between">
+						<div class="flex items-center justify-between cursor-pointer" onclick={() => onSelectPost?.(edge.node.id)}>
 							<div class="flex items-center space-x-2 truncate">
 								<span class="font-bold text-accent-secondary truncate"
 									>
@@ -152,7 +153,8 @@
 
 						<!-- Content -->
 						<p
-							class="mt-2 text-text-main text-[15px] leading-relaxed break-words whitespace-pre-wrap font-sans"
+							onclick={() => onSelectPost?.(edge.node.id)}
+							class="mt-2 text-text-main text-[15px] leading-relaxed break-words whitespace-pre-wrap font-sans cursor-pointer hover:text-text-main/80 transition-colors"
 						>
 							{#if edge.node.postType === "REPOST"}
 								{edge.node.repostOf.content}
@@ -179,8 +181,8 @@
 						<!-- Actions -->
 						<div class="flex items-center justify-between mt-4 text-text-muted pr-8">
 							<button
-								onclick={() => replyingTo = replyingTo === edge.node.id ? null : edge.node.id}
-								class="flex items-center space-x-2 hover:text-accent-secondary transition-colors duration-75 group/btn {replyingTo === edge.node.id ? 'text-accent-secondary' : ''}"
+								onclick={() => onSelectPost?.(edge.node.id)}
+								class="flex items-center space-x-2 hover:text-accent-secondary transition-colors duration-75 group/btn"
 							>
 								<div class="group-hover/btn:bg-accent-secondary/10 p-1">
 									<MessageCircle size={18} strokeWidth={1.5} />

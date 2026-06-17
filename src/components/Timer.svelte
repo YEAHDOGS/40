@@ -1,8 +1,8 @@
 <script>
 	import { onMount, getContext } from "svelte";
-	import { Timer as TimerIcon, AlertTriangle } from "lucide-svelte";
-	import { fly } from "svelte/transition";
-	import { queryStore, mutationStore, gql } from "@urql/svelte";
+	import { Timer as TimerIcon, Settings as SettingsIcon, X } from "lucide-svelte";
+	import { queryStore, gql } from "@urql/svelte";
+	import { presets, communityThemes } from "../lib/clockPresets.js";
 
 	const NextWipeQuery = gql`
 		query GetNextWipe {
@@ -24,8 +24,17 @@
 	});
 
 	let endDate = $state(null);
-	let timeLeft = $state({ days: 0, hours: 0, minutes: 0, seconds: 0, ms: 0 });
+	let timeLeft = $state({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 	let frame = 0;
+
+	// Customizer State
+	let showPanel = $state(false);
+	let selectedThemeId = $state("vintage");
+	let colorBg = $state("#1c1c1c");
+	let colorTile = $state("#e4e4e4");
+	let colorDigit = $state("#1a1a1a");
+	let colorLabel = $state("#ff6600");
+	let customCss = $state("");
 
 	$effect(() => {
 		if ($wipeQuery.data && $wipeQuery.data.nextWipe) {
@@ -43,152 +52,536 @@
 		const diff = endDate.getTime() - now.getTime();
 
 		if (diff <= 0) {
-			timeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0, ms: 0 };
-			// Trigger the global wipe if we hit 0!
+			timeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
 			client.mutation(TriggerWipeMutation).toPromise().then(() => {
-				// The backend updates globalNextWipe, so we should refetch
 				wipeQuery.reexecute({ requestPolicy: 'network-only' });
 			});
-			return; // wait for next cycle
+			return;
 		}
 
 		timeLeft = {
 			days: Math.floor(diff / (1000 * 60 * 60 * 24)),
 			hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
 			minutes: Math.floor((diff / 1000 / 60) % 60),
-			seconds: Math.floor((diff / 1000) % 60),
-			ms: Math.floor((diff % 1000) / 10),
+			seconds: Math.floor((diff / 1000) % 60)
 		};
 
 		frame = requestAnimationFrame(updateTimer);
 	}
 
 	onMount(() => {
+		// Restore theme from localStorage
+		const saved = localStorage.getItem("40forty_timer_theme");
+		if (saved) {
+			try {
+				const data = JSON.parse(saved);
+				colorBg = data.colorBg ?? colorBg;
+				colorTile = data.colorTile ?? colorTile;
+				colorDigit = data.colorDigit ?? colorDigit;
+				colorLabel = data.colorLabel ?? colorLabel;
+				customCss = data.customCss ?? customCss;
+				selectedThemeId = data.selectedThemeId ?? selectedThemeId;
+			} catch (e) {
+				console.error("Failed to load theme");
+			}
+		}
+
 		frame = requestAnimationFrame(updateTimer);
 		return () => cancelAnimationFrame(frame);
 	});
+
+	function togglePanel() {
+		showPanel = !showPanel;
+	}
+
+	function applyPreset() {
+		const preset = presets.find(p => p.id === selectedThemeId);
+		if (preset) {
+			colorBg = preset.colorBg;
+			colorTile = preset.colorTile;
+			colorDigit = preset.colorDigit;
+			colorLabel = preset.colorLabel;
+			customCss = preset.css;
+			saveTheme();
+		}
+	}
+
+	function applyCommunityTheme(theme) {
+		selectedThemeId = theme.id;
+		colorBg = theme.colorBg;
+		colorTile = theme.colorTile;
+		colorDigit = theme.colorDigit;
+		colorLabel = theme.colorLabel;
+		customCss = theme.css;
+		saveTheme();
+	}
+
+	function saveTheme() {
+		const config = {
+			selectedThemeId,
+			colorBg,
+			colorTile,
+			colorDigit,
+			colorLabel,
+			customCss
+		};
+		localStorage.setItem("40forty_timer_theme", JSON.stringify(config));
+	}
+
+	// Reactive variable style injection
+	let dynamicStyles = $derived(`
+		--clock-bg: ${colorBg};
+		--tile-bg: ${colorTile};
+		--digit-color: ${colorDigit};
+		--label-color: ${colorLabel};
+	`);
 </script>
 
-<div class="timer-wrapper group">
-	<!-- Spinning Borders using standard Tailwind gradients -->
-	<div class="border-layer-primary"></div>
-	<div class="border-layer-secondary"></div>
+<div class="timer-wrapper" style={dynamicStyles}>
+	<!-- Dynamic CSS Injection (strictly scoped inside the wrapper) -->
+	{#if customCss}
+		<svelte:element this="style">
+			{@html customCss}
+		</svelte:element>
+	{/if}
 
-	<!-- Inner Glass Panel -->
-	<div class="timer-glass-panel">
-		<div class="timer-header">
-			<div class="flex items-center space-x-3">
-				<TimerIcon
-					size={20}
-					strokeWidth={1.5}
-					class="animate-[spin_4s_linear_infinite] text-accent-primary drop-shadow-md"
-				/>
-				<span
-					class="font-bold uppercase tracking-widest text-white/90 drop-shadow-sm text-sm"
-					>Global Wipe</span
-				>
+	<!-- Left and Right mechanical hinge brackets for split flip look -->
+	<div class="bracket bracket-left"></div>
+	<div class="bracket bracket-right"></div>
+
+	<!-- Title Header -->
+	<div class="timer-header">
+		<div class="flex items-center space-x-2">
+			<TimerIcon size={14} class="animate-pulse text-accent-primary" />
+			<span class="timer-title">Time to Global Wipe</span>
+		</div>
+		
+		<!-- Customize Gear Icon Button -->
+		<button onclick={togglePanel} class="customizer-toggle-btn" title="Customize Design">
+			<SettingsIcon size={14} />
+		</button>
+	</div>
+
+	<!-- Flip Clock Containers -->
+	<div class="flip-clock-container">
+		<!-- Days -->
+		<div class="flip-tile-col">
+			<div class="flip-card">
+				<span class="flip-digit">{timeLeft.days.toString().padStart(2, "0")}</span>
 			</div>
-			<span class="text-xs text-white/30 tracking-widest uppercase hidden sm:block"
-				>Countdown</span
-			>
+			<span class="flip-label">Days</span>
 		</div>
 
-		<!-- Glowing Continuous Numbers -->
-		<div class="digits-container">
-			{#snippet digitBlock(value, label, isPrimary)}
-				<div class="digit-column">
-					<!-- Inner Digit Container -->
-					<div class="digit-box">
-						{#key value}
-							<span
-								in:fly={{ y: -30, duration: 400, opacity: 0 }}
-								out:fly={{ y: 30, duration: 400, opacity: 0 }}
-								class="digit-value {isPrimary ? 'is-primary' : 'is-secondary'}"
-							>
-								{value.toString().padStart(2, "0")}
-							</span>
-						{/key}
-					</div>
-					<span class="digit-label">{label}</span>
-				</div>
-			{/snippet}
+		<span class="flip-colon">:</span>
 
-			{@render digitBlock(timeLeft.days, "Days", false)}
-			<span class="digit-separator">:</span>
-			{@render digitBlock(timeLeft.hours, "Hours", false)}
-			<span class="digit-separator">:</span>
-			{@render digitBlock(timeLeft.minutes, "Mins", false)}
-			<span class="digit-separator">:</span>
-			{@render digitBlock(timeLeft.seconds, "Secs", true)}
-
-			<!-- Milliseconds -->
-			<div class="ms-block">
-				<span class="ms-value">.{timeLeft.ms.toString().padStart(2, "0")}</span>
+		<!-- Hours -->
+		<div class="flip-tile-col">
+			<div class="flip-card">
+				<span class="flip-digit">{timeLeft.hours.toString().padStart(2, "0")}</span>
 			</div>
+			<span class="flip-label">Hours</span>
+		</div>
+
+		<span class="flip-colon">:</span>
+
+		<!-- Minutes -->
+		<div class="flip-tile-col">
+			<div class="flip-card">
+				<span class="flip-digit">{timeLeft.minutes.toString().padStart(2, "0")}</span>
+			</div>
+			<span class="flip-label">Mins</span>
+		</div>
+
+		<span class="flip-colon">:</span>
+
+		<!-- Seconds -->
+		<div class="flip-tile-col">
+			<div class="flip-card">
+				<span class="flip-digit">{timeLeft.seconds.toString().padStart(2, "0")}</span>
+			</div>
+			<span class="flip-label">Secs</span>
 		</div>
 	</div>
+
+	<!-- Customizer Drawer Panel -->
+	{#if showPanel}
+		<div class="customizer-drawer">
+			<div class="drawer-header">
+				<span>Style Protocol Editor</span>
+				<button onclick={togglePanel} class="drawer-close-btn">
+					<X size={14} />
+				</button>
+			</div>
+
+			<!-- Preset Dropdown -->
+			<div class="drawer-group">
+				<label class="drawer-label-heading">Theme Preset</label>
+				<select bind:value={selectedThemeId} onchange={applyPreset} class="drawer-select">
+					{#each presets as preset}
+						<option value={preset.id}>{preset.name}</option>
+					{/each}
+				</select>
+			</div>
+
+			<!-- Quick Color Pickers -->
+			<div class="drawer-group">
+				<label class="drawer-label-heading">Color Variables</label>
+				<div class="picker-grid">
+					<div class="picker-item">
+						<span>Bg</span>
+						<input type="color" bind:value={colorBg} oninput={saveTheme} />
+					</div>
+					<div class="picker-item">
+						<span>Tile</span>
+						<input type="color" bind:value={colorTile} oninput={saveTheme} />
+					</div>
+					<div class="picker-item">
+						<span>Digits</span>
+						<input type="color" bind:value={colorDigit} oninput={saveTheme} />
+					</div>
+					<div class="picker-item">
+						<span>Labels</span>
+						<input type="color" bind:value={colorLabel} oninput={saveTheme} />
+					</div>
+				</div>
+			</div>
+
+			<!-- Direct CSS Overrides Textarea -->
+			<div class="drawer-group">
+				<label class="drawer-label-heading">Custom CSS (Scoped Overrides)</label>
+				<textarea
+					bind:value={customCss}
+					oninput={saveTheme}
+					placeholder={"/* Write direct CSS rules here */\n.flip-card { border: 1px solid cyan; }"}
+					class="drawer-textarea"
+				></textarea>
+			</div>
+
+			<!-- Community Gallery List -->
+			<div class="drawer-group">
+				<label class="drawer-label-heading">Browse Uploads Gallery</label>
+				<div class="gallery-row">
+					{#each communityThemes as theme}
+						<button
+							onclick={() => applyCommunityTheme(theme)}
+							class="gallery-theme-tag {selectedThemeId === theme.id ? 'active' : ''}"
+						>
+							{theme.name}
+						</button>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style lang="scss">
-	@reference "../app.css";
-
 	.timer-wrapper {
-		@apply relative w-full rounded-2xl p-0.5 overflow-hidden shadow-2xl transition-shadow duration-700;
+		position: relative;
+		width: 100%;
+		border-radius: 12px;
+		padding: 20px 14px;
+		background: var(--clock-bg, #1c1c1c);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.5);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		transition: all 0.3s ease;
+		overflow: hidden;
 	}
 
-	.border-layer-primary {
-		@apply absolute -inset-1/2 bg-gradient-to-tr from-accent-primary via-transparent to-accent-secondary animate-[spin_4s_linear_infinite] opacity-80 blur-sm;
+	/* Metal hinges on left/right edges */
+	.bracket {
+		position: absolute;
+		width: 6px;
+		height: 32px;
+		background: #3e3e3e;
+		background-image: linear-gradient(to right, #4e4e4e, #2e2e2e);
+		border-radius: 3px;
+		top: 55%;
+		transform: translateY(-50%);
+		box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+		border: 1px solid #1a1a1a;
+		z-index: 10;
 	}
-
-	.border-layer-secondary {
-		@apply absolute -inset-1/2 bg-gradient-to-bl from-accent-secondary via-transparent to-accent-primary animate-[spin_3s_linear_infinite] opacity-60 blur-md;
+	.bracket-left {
+		left: -3px;
 	}
-
-	.timer-glass-panel {
-		@apply relative bg-black/95 backdrop-blur-3xl rounded-xl p-6 flex flex-col items-center justify-center border border-white/10 shadow-inner z-10 overflow-hidden h-full;
+	.bracket-right {
+		right: -3px;
 	}
 
 	.timer-header {
-		@apply flex items-center space-x-3 text-white/50 font-mono w-full justify-between border-b border-white/10 pb-4 z-10;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		border-b: 1px solid rgba(255, 255, 255, 0.05);
+		padding-bottom: 8px;
+		margin-bottom: 14px;
+		z-index: 2;
 	}
 
-	.digits-container {
-		@apply flex items-baseline justify-center w-full relative z-10 pt-6 pb-2 space-x-1;
+	.timer-title {
+		font-family: monospace;
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 1px;
+		color: rgba(255, 255, 255, 0.4);
 	}
 
-	.digit-column {
-		@apply flex flex-col items-center relative w-12 sm:w-14;
+	.customizer-toggle-btn {
+		background: none;
+		border: none;
+		color: rgba(255, 255, 255, 0.3);
+		cursor: pointer;
+		transition: color 0.15s ease;
+		display: flex;
+		align-items: center;
+		padding: 2px;
+
+		&:hover {
+			color: var(--label-color, #ff6600);
+		}
 	}
 
-	.digit-box {
-		@apply relative h-14 sm:h-16 w-full overflow-hidden rounded-xl bg-white/5 border border-white/10 shadow-inner;
+	.flip-clock-container {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		width: 100%;
+		gap: 8px;
+		z-index: 2;
 	}
 
-	.digit-value {
-		@apply absolute inset-0 flex items-center justify-center pb-1 text-2xl sm:text-3xl font-bold tabular-nums;
+	.flip-tile-col {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		width: 60px;
+	}
 
-		&.is-primary {
-			@apply text-accent-primary drop-shadow-lg;
+	.flip-card {
+		position: relative;
+		width: 100%;
+		height: 60px;
+		border-radius: 6px;
+		background-color: var(--tile-bg, #e4e4e4);
+		/* Premium 3D look with overlays */
+		background-image: linear-gradient(
+			to bottom,
+			rgba(255, 255, 255, 0.25) 0%,
+			rgba(255, 255, 255, 0.05) 50%,
+			rgba(0, 0, 0, 0.08) 50%,
+			rgba(0, 0, 0, 0.25) 100__
+		);
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+		overflow: hidden;
+		border: 1px solid rgba(0, 0, 0, 0.15);
+
+		/* Horizontal center split crease line */
+		&::after {
+			content: '';
+			position: absolute;
+			left: 0;
+			right: 0;
+			top: 50%;
+			height: 2px;
+			background: rgba(0, 0, 0, 0.18);
+			border-top: 1px solid rgba(0, 0, 0, 0.3);
+			border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+			z-index: 4;
+		}
+	}
+
+	.flip-digit {
+		font-family: 'Inter', 'Helvetica Neue', 'Arial Black', sans-serif;
+		font-size: 2rem;
+		font-weight: 900;
+		color: var(--digit-color, #1a1a1a);
+		letter-spacing: -1px;
+		line-height: 1;
+		z-index: 2;
+		text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+		font-feature-settings: "tnum";
+	}
+
+	.flip-label {
+		font-family: monospace;
+		font-size: 0.65rem;
+		font-weight: 700;
+		color: var(--label-color, #ff6600);
+		text-transform: uppercase;
+		letter-spacing: 1.2px;
+	}
+
+	.flip-colon {
+		font-size: 1.5rem;
+		color: rgba(255, 255, 255, 0.15);
+		font-weight: bold;
+		padding-bottom: 18px;
+		animation: pulse-light 1.5s infinite alternate;
+	}
+
+	@keyframes pulse-light {
+		from { opacity: 0.3; }
+		to { opacity: 0.9; }
+	}
+
+	/* Drawer customizer panel CSS */
+	.customizer-drawer {
+		width: 100%;
+		border-top: 1px solid rgba(255, 255, 255, 0.08);
+		margin-top: 16px;
+		padding-top: 14px;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		z-index: 5;
+		animation: slide-down 0.25s ease-out;
+	}
+
+	@keyframes slide-down {
+		from { opacity: 0; transform: translateY(-8px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+
+	.drawer-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		font-family: monospace;
+		font-size: 0.75rem;
+		color: rgba(255, 255, 255, 0.5);
+		text-transform: uppercase;
+		letter-spacing: 0.8px;
+	}
+
+	.drawer-close-btn {
+		background: none;
+		border: none;
+		color: rgba(255, 255, 255, 0.3);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		padding: 2px;
+		&:hover {
+			color: white;
+		}
+	}
+
+	.drawer-group {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.drawer-label-heading {
+		font-family: monospace;
+		font-size: 0.65rem;
+		color: rgba(255, 255, 255, 0.4);
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+
+	.drawer-select {
+		background: #2a2a2a;
+		color: white;
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		border-radius: 4px;
+		padding: 6px 10px;
+		font-family: monospace;
+		font-size: 0.75rem;
+		cursor: pointer;
+		outline: none;
+
+		&:focus {
+			border-color: var(--label-color, #ff6600);
+		}
+	}
+
+	.picker-grid {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 8px;
+	}
+
+	.picker-item {
+		background: #2a2a2a;
+		border-radius: 4px;
+		padding: 4px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+
+		span {
+			font-family: monospace;
+			font-size: 0.6rem;
+			color: rgba(255, 255, 255, 0.5);
 		}
 
-		&.is-secondary {
-			@apply text-white/90 drop-shadow-md;
+		input[type="color"] {
+			background: none;
+			border: none;
+			width: 24px;
+			height: 24px;
+			cursor: pointer;
+			padding: 0;
+			border-radius: 2px;
+			overflow: hidden;
 		}
 	}
 
-	.digit-label {
-		@apply mt-2 text-xs text-white/40 uppercase tracking-widest font-mono;
+	.drawer-textarea {
+		background: #181818;
+		color: #55ff55;
+		font-family: 'Courier New', Courier, monospace;
+		font-size: 0.7rem;
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		border-radius: 4px;
+		padding: 8px;
+		min-height: 80px;
+		resize: vertical;
+		outline: none;
+
+		&:focus {
+			border-color: var(--label-color, #ff6600);
+		}
 	}
 
-	.digit-separator {
-		@apply text-xl sm:text-2xl text-white/20 animate-pulse pb-6 sm:pb-8 drop-shadow-md;
+	.gallery-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
 	}
 
-	.ms-block {
-		@apply flex flex-col items-start justify-end pb-6 sm:pb-8 w-8 sm:w-10;
-	}
+	.gallery-theme-tag {
+		background: #252525;
+		color: rgba(255, 255, 255, 0.6);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 4px;
+		padding: 4px 8px;
+		font-family: monospace;
+		font-size: 0.65rem;
+		cursor: pointer;
+		transition: all 0.15s ease;
 
-	.ms-value {
-		@apply text-sm sm:text-base font-bold text-accent-secondary font-mono tracking-widest tabular-nums drop-shadow-md;
+		&:hover {
+			background: #303030;
+			color: white;
+		}
+
+		&.active {
+			background: rgba(255, 102, 0, 0.1);
+			border-color: var(--label-color, #ff6600);
+			color: white;
+		}
 	}
 </style>

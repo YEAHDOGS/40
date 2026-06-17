@@ -136,4 +136,60 @@ test('REST API Handler Unit Tests', async (t) => {
         assert.strictEqual(nextCalled, true, 'Should invoke next() middleware');
     });
 
+    await t.test('POST /api/posts & GET /api/posts/:id - Comment creation and detail retrieval', async () => {
+        // 1. Signup a user
+        const signupReq = createMockReq('POST', '/api/auth/signup', {}, {
+            username: `unit_tester_${Math.random().toString(36).substring(7)}`,
+            email: `unit_tester_${Math.random().toString(36).substring(7)}@example.com`,
+            displayName: 'Unit Tester'
+        });
+        const signupRes = createMockRes();
+        await restApiHandler(signupReq, signupRes, () => {});
+        const signupResult = await signupRes.wait();
+        
+        assert.strictEqual(signupResult.statusCode, 201);
+        const signupData = JSON.parse(signupResult.body);
+        const token = signupData.token.accessToken;
+
+        // 2. Create a parent post
+        const createPostReq = createMockReq('POST', '/api/posts', {
+            'authorization': `Bearer ${token}`
+        }, {
+            content: 'Parent Post Content'
+        });
+        const createPostRes = createMockRes();
+        await restApiHandler(createPostReq, createPostRes, () => {});
+        const createPostResult = await createPostRes.wait();
+        
+        assert.strictEqual(createPostResult.statusCode, 201);
+        const parentPost = JSON.parse(createPostResult.body);
+        const parentPostId = parentPost.id;
+
+        // 3. Create a comment (replyToId set to parentPostId)
+        const createCommentReq = createMockReq('POST', '/api/posts', {
+            'authorization': `Bearer ${token}`
+        }, {
+            content: 'This is a comment to parent post',
+            replyToId: parentPostId
+        });
+        const createCommentRes = createMockRes();
+        await restApiHandler(createCommentReq, createCommentRes, () => {});
+        const createCommentResult = await createCommentRes.wait();
+        
+        assert.strictEqual(createCommentResult.statusCode, 201);
+        const commentPost = JSON.parse(createCommentResult.body);
+        assert.strictEqual(commentPost.replyToId, parentPostId);
+
+        // 4. Retrieve single post details
+        const getPostReq = createMockReq('GET', `/api/posts/${parentPostId}`);
+        const getPostRes = createMockRes();
+        await restApiHandler(getPostReq, getPostRes, () => {});
+        const getPostResult = await getPostRes.wait();
+        
+        assert.strictEqual(getPostResult.statusCode, 200);
+        const retrievedPost = JSON.parse(getPostResult.body);
+        assert.strictEqual(retrievedPost.id, parentPostId);
+        assert.strictEqual(retrievedPost.content, 'Parent Post Content');
+    });
+
 });
