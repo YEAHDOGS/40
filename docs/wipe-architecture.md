@@ -54,6 +54,9 @@ not exist.
 ### Manual trigger
 
 `triggerWipe` is the auth-required escape hatch (admin use, incident response).
+Callers need a token AND an entry in the `FORTY_ADMIN_IDS` /
+`FORTY_ADMIN_USERNAMES` allowlist; with neither configured, the mutation
+refuses everyone (deny-by-default).
 It purges immediately and restarts the 40-day clock **now**, breaking grid
 alignment deliberately — a human chose this moment.
 
