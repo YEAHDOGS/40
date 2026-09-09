@@ -106,7 +106,14 @@ export async function restApiHandler(req, res, next) {
         if (path === '/auth/signup' && method === 'POST') {
             console.log('[REST] Handling signup...');
             const body = await parseJsonBody(req);
-            console.log('[REST] Signup body parsed:', body);
+            // Never log the request body here: it contains the plaintext
+            // password. Log only the shape we need for debugging.
+            console.log('[REST] Signup body parsed:', {
+                username: body.username,
+                email: typeof body.email === 'string' ? '[redacted]' : body.email,
+                displayName: body.displayName,
+                password: body.password ? '[redacted]' : body.password
+            });
             const { username, email, displayName, password } = body;
             if (!username || !email || !displayName) {
                 return sendJson(res, { error: 'Username, email, and displayName are required' }, 400);
