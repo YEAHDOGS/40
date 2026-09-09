@@ -14,6 +14,10 @@ import { Readable } from 'node:stream';
 process.env.FORTY_LOCKOUT_MAX_FAILS = '3';
 process.env.FORTY_LOCKOUT_MS = '1500';
 process.env.FORTY_LOCKOUT_FAIL_WINDOW_MS = '60000';
+// Proxy headers are trusted only behind an explicit flag (see
+// src/server/client-ip.js); these REST tests identify clients via
+// X-Forwarded-For, so opt in.
+process.env.TRUST_PROXY = '1';
 
 const { resolvers } = await import('../src/server/resolvers.js');
 const { restApiHandler } = await import('../src/server/rest.js');

@@ -28,14 +28,14 @@ const CORS_HEADERS = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 };
 
-// Client IP for rate limiting: honor X-Forwarded-For when behind a proxy,
-// fall back to the socket address. Test mocks have neither → 'unknown'.
-const getClientIp = (req) => {
-    const fwd = req.headers?.['x-forwarded-for'];
-    if (typeof fwd === 'string' && fwd.trim()) return fwd.split(',')[0].trim();
-    const remote = req.socket?.remoteAddress;
-    return typeof remote === 'string' && remote ? remote : 'unknown';
-};
+import { resolveClientIp } from './client-ip.js';
+
+// Client IP for rate limiting, resolved by the shared helper in
+// src/server/client-ip.js. Proxy headers (X-Forwarded-For) are honored only
+// when TRUST_PROXY=1 — they are client-forgeable, and trusting them by
+// default lets an attacker rotate identities and dodge the per-IP budgets.
+const getClientIp = (req) =>
+	resolveClientIp(req.headers, { socketAddress: req.socket?.remoteAddress });
 
 // 429 with a machine-readable Retry-After. Shape: { error, retryAfterSeconds }.
 const sendRateLimited = (res, retryAfterMs, message) => {

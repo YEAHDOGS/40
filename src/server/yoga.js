@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { resolvers } from './resolvers.js';
 import { restApiHandler } from './rest.js';
 import { verifyAuthToken } from './auth.js';
+import { resolveClientIp } from './client-ip.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,14 +29,11 @@ const yoga = createYoga({
 			const decoded = await verifyAuthToken(token);
 			if (decoded) userId = decoded.userId;
 		}
-		// Client IP for the auth rate limiters (shared with the REST
-		// surface). X-Forwarded-For wins behind a proxy; 'unknown' when the
+		// Client IP for the auth rate limiters (shared with the REST surface).
+		// Resolved by src/server/client-ip.js: proxy headers are honored only
+		// when TRUST_PROXY=1 (they are client-forgeable); 'unknown' when the
 		// transport gives us nothing (tests, direct sockets).
-		const fwd = request.headers.get('x-forwarded-for');
-		const clientIp =
-			(fwd && fwd.split(',')[0].trim()) ||
-			request.headers.get('x-real-ip') ||
-			'unknown';
+		const clientIp = resolveClientIp(request.headers);
 		return { userId, token, clientIp };
 	}
 });
