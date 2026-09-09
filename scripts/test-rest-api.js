@@ -79,18 +79,22 @@ async function runTests() {
         createdPostId = postData.id;
         console.log(`  [PASS] Created post ID: ${createdPostId}\n`);
 
-        // 5. Fetch posts list
+        // 5. Fetch posts list (member-only read -> token required)
         console.log('> Testing GET /api/posts...');
-        const getPostsRes = await fetch(`${BASE_URL}/api/posts?limit=5`);
+        const getPostsRes = await fetch(`${BASE_URL}/api/posts?limit=5`, {
+            headers: { 'Authorization': `Bearer ${token1}` }
+        });
         assert.strictEqual(getPostsRes.status, 200, 'Get posts list should return 200');
         const listData = await getPostsRes.json();
         assert.ok(Array.isArray(listData.posts), 'Posts should be an array');
         assert.ok(listData.posts.some(p => p.id === createdPostId), 'List should contain the created post');
         console.log(`  [PASS] Successfully retrieved posts list (total count: ${listData.totalCount})\n`);
 
-        // 6. Fetch single post
+        // 6. Fetch single post (member-only read -> token required)
         console.log(`> Testing GET /api/posts/${createdPostId}...`);
-        const getSingleRes = await fetch(`${BASE_URL}/api/posts/${createdPostId}`);
+        const getSingleRes = await fetch(`${BASE_URL}/api/posts/${createdPostId}`, {
+            headers: { 'Authorization': `Bearer ${token1}` }
+        });
         assert.strictEqual(getSingleRes.status, 200, 'Get single post should return 200');
         const singleData = await getSingleRes.json();
         assert.strictEqual(singleData.id, createdPostId, 'Fetched post ID should match');

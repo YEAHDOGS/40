@@ -198,8 +198,13 @@ export async function restApiHandler(req, res, next) {
             return sendJson(res, { success: true, message: 'Logged out successfully' });
         }
 
-        // 5. GET /posts
+        // 5. GET /posts — content reads require a token (README: all content
+        // is blocked and hidden from non-users).
         if (path === '/posts' && method === 'GET') {
+            const auth = await getAuthUser(req);
+            if (!auth) {
+                return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
+            }
             const limit = parseInt(url.searchParams.get('limit')) || 50;
             const offset = parseInt(url.searchParams.get('offset')) || 0;
 
@@ -280,8 +285,12 @@ export async function restApiHandler(req, res, next) {
         // Match patterns for /posts/:id
         const postMatch = path.match(/^\/posts\/([a-zA-Z0-9-]+)$/);
 
-        // 7. GET /posts/:id
+        // 7. GET /posts/:id — content reads require a token (see note on #5).
         if (postMatch && method === 'GET') {
+            const auth = await getAuthUser(req);
+            if (!auth) {
+                return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
+            }
             const postId = postMatch[1];
             const post = await prisma.post.findUnique({
                 where: { id: postId },
@@ -377,9 +386,15 @@ export async function restApiHandler(req, res, next) {
             return sendJson(res, { success: true, message: 'Post deleted successfully' });
         }
 
-        // 10. GET /users/:username
+        // 10. GET /users/:username — content reads require a token (see note
+        // on #5). Returns the full user row minus passwordHash (emails are
+        // member-visible by design; sanitizeUser strips only the hash).
         const userMatch = path.match(/^\/users\/([a-zA-Z0-9-_]+)$/);
         if (userMatch && method === 'GET') {
+            const auth = await getAuthUser(req);
+            if (!auth) {
+                return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
+            }
             const username = userMatch[1];
             const user = await prisma.user.findUnique({
                 where: { username },
