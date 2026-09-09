@@ -55,4 +55,22 @@ test('password hashing round-trips and fails closed', async (t) => {
 		assert.strictEqual(await verifyPassword('🍨🍦 forty days', hash), true);
 		assert.strictEqual(await verifyPassword('🍨🍦 forty day', hash), false);
 	});
+
+	await t.test('wrong-password verify costs a full scrypt pass (timing safety)', async () => {
+		// Regression guard: verifyPassword must do the full scrypt derivation
+		// for a well-formed wrong password (no early-exit on mismatch), so
+		// correct and wrong guesses look alike to a stopwatch. Loose bound —
+		// CI timing jitter must not flip this.
+		const hash = await hashPassword('correct horse battery staple');
+		const t0 = process.hrtime.bigint();
+		assert.strictEqual(await verifyPassword('correct horse battery staple', hash), true);
+		const correctMs = Number(process.hrtime.bigint() - t0) / 1e6;
+		const t1 = process.hrtime.bigint();
+		assert.strictEqual(await verifyPassword('wrong password here', hash), false);
+		const wrongMs = Number(process.hrtime.bigint() - t1) / 1e6;
+		assert.ok(
+			wrongMs >= correctMs * 0.25,
+			`wrong-password verify suspiciously fast: ${wrongMs.toFixed(1)}ms vs ${correctMs.toFixed(1)}ms correct`
+		);
+	});
 });
