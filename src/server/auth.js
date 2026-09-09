@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { getRedisClient } from './redis.js';
 import { printStartupBanner, printFatalBanner } from './startup-banner.js';
 
-const DEV_ONLY_SECRET = 'forty-dev-only-secret';
+const DEV_ONLY_SECRET = 'forty-dev-only-secret'; // secret-scan:allow - intentional dev-only fallback; production refuses to boot without JWT_SECRET
 
 /**
  * Resolve the JWT signing secret from the environment.

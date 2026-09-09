@@ -31,6 +31,25 @@ The short version: with `NODE_ENV=production` the server **refuses to boot
 without `JWT_SECRET` set** — a FATAL banner names the missing variable before
 the process crashes, by design. Start from `.env.example` for local dev.
 
+# Secrets policy & scanner
+
+No real credentials ever live in this repo. The dev-only JWT fallback is
+loudly announced at boot and refused in production; `.env.example` is a
+template of placeholders, never real values.
+
+CI enforces this: `.github/workflows/secret-scan.yml` runs the
+dependency-free `scripts/secret-scan.js` (AWS keys, GitHub PATs, private
+keys, Slack/Stripe/Google/OpenAI tokens, JWTs, credentialed DB URLs, and
+hardcoded secret assignments) over the tree and fails the build on a hit.
+Run it locally any time:
+
+```sh
+node scripts/secret-scan.js
+```
+
+Known-intentional placeholders (dev fallback, mock OAuth values) carry a
+`secret-scan:allow` marker on the line, reviewed in the open.
+
 # Features
 
 - All content is blocked and hidden from non-users. This is a privacy-first social media
