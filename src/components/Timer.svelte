@@ -93,13 +93,13 @@
 	}
 
 	function applyPreset() {
-		const preset = presets.find(p => p.id === selectedThemeId);
-		if (preset) {
-			colorBg = preset.colorBg;
-			colorTile = preset.colorTile;
-			colorDigit = preset.colorDigit;
-			colorLabel = preset.colorLabel;
-			customCss = preset.css;
+		const theme = [...presets, ...communityThemes].find(p => p.id === selectedThemeId);
+		if (theme) {
+			colorBg = theme.colorBg;
+			colorTile = theme.colorTile;
+			colorDigit = theme.colorDigit;
+			colorLabel = theme.colorLabel;
+			customCss = theme.css;
 			saveTheme();
 		}
 	}
@@ -215,9 +215,16 @@
 			<div class="drawer-group">
 				<label class="drawer-label-heading">Theme Preset</label>
 				<select bind:value={selectedThemeId} onchange={applyPreset} class="drawer-select">
-					{#each presets as preset}
-						<option value={preset.id}>{preset.name}</option>
-					{/each}
+					<optgroup label="Built-in">
+						{#each presets as preset}
+							<option value={preset.id}>{preset.name}</option>
+						{/each}
+					</optgroup>
+					<optgroup label="Community uploads">
+						{#each communityThemes as theme}
+							<option value={theme.id}>{theme.name}</option>
+						{/each}
+					</optgroup>
 				</select>
 			</div>
 
