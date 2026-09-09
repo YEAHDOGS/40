@@ -196,6 +196,19 @@ test('LoginAttemptTracker: lockout after N consecutive failures', async (t) => {
 		);
 	});
 
+	await t.test('interleaved lock-checks do not reset the failure count', async () => {
+		// The login path calls lockedRemainingMs() BEFORE every attempt.
+		// Those reads must never wipe the accumulated failures, or the
+		// lockout would never trigger.
+		now = 18_000_000;
+		const tr = new LoginAttemptTracker({ maxFails: 3, lockoutMs: 60_000, failWindowMs: 60_000, now: clock });
+		for (let i = 0; i < 3; i++) {
+			assert.strictEqual(tr.lockedRemainingMs('u'), 0, `check ${i + 1}: not locked yet`);
+			tr.recordFailure('u');
+		}
+		assert.ok(tr.lockedRemainingMs('u') > 0, 'locked after 3 failures despite interleaved checks');
+	});
+
 	await t.test('sweep drops unlocked, stale entries', async () => {
 		now = 17_000_000;
 		const tr = new LoginAttemptTracker({ maxFails: 5, lockoutMs: 60_000, failWindowMs: 1_000, now: clock });
