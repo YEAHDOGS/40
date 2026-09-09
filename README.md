@@ -42,3 +42,7 @@ Full contract: [docs/wipe-architecture.md](docs/wipe-architecture.md).
 - Ad free, we do not serve or host advertisements. Nothing in feed, no banners
 - Forty Map, to see nearby events, people, and places
 
+
+## License
+
+MIT — see [LICENSE](LICENSE).
