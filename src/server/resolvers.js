@@ -15,6 +15,15 @@ import {
 	getNextWipe,
 	triggerWipeNow
 } from './wipe.js';
+import {
+	loginIpLimiter,
+	loginAccountLimiter,
+	signupIpLimiter,
+	loginTracker,
+	retryAfterSeconds,
+	rateLimitedGraphQLError,
+	accountLockedGraphQLError
+} from './rate-limit.js';
 
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
@@ -214,7 +223,13 @@ export const resolvers = {
 	},
 
 	Mutation: {
-		signUp: async (_, args) => {
+		signUp: async (_, args, context) => {
+			// Brute-force/abuse guard: per-IP signup budget, checked before
+			// any validation or DB work so mass-registration scripts burn
+			// their budget cheaply.
+			const signUpIp = context?.clientIp || 'unknown';
+			const signUpRl = signupIpLimiter.check(`signup:ip:${signUpIp}`);
+			if (!signUpRl.allowed) throw rateLimitedGraphQLError('sign-up', signUpRl.retryAfterMs);
 			// Boundary validation: length caps, email format, min password
 			// length, prototype-pollution guard. Takes the RAW args (not a
 			// destructured subset) so smuggled keys are rejected, not
@@ -244,19 +259,39 @@ export const resolvers = {
 			};
 			return { token, user: sanitizeUser(user) };
 		},
-		login: async (_, { username, password }) => {
+		login: async (_, { username, password }, context) => {
+			// Brute-force guard, cheapest checks first:
+			//  1. per-IP login budget (stops distributed guessing from one box),
+			//  2. account lockout (consecutive failures for THIS account),
+			//  3. per-account login budget (stops many-IP guessing at one account).
+			// Lockout is checked before the account budget so a locked account
+			// reports ACCOUNT_LOCKED instead of a generic rate limit.
+			const loginIp = context?.clientIp || 'unknown';
+			const ipRl = loginIpLimiter.check(`login:ip:${loginIp}`);
+			if (!ipRl.allowed) throw rateLimitedGraphQLError('login', ipRl.retryAfterMs);
 			// Type/length caps only — no min length: a legacy user with a
 			// short password must still be able to attempt login (it will
 			// fail closed on verify). Unknown users fail closed below.
 			const cleanUsername = assertString(username, { field: 'username', min: 1, max: LIMITS.email.max });
 			const cleanPassword = assertString(password, { field: 'password', min: 1, max: 4096 });
+			const lockedMs = loginTracker.lockedRemainingMs(cleanUsername);
+			if (lockedMs > 0) throw accountLockedGraphQLError(lockedMs);
+			const acctRl = loginAccountLimiter.check(`login:account:${cleanUsername}`);
+			if (!acctRl.allowed) throw rateLimitedGraphQLError('login', acctRl.retryAfterMs);
 			const user = await prisma.user.findUnique({ where: { username: cleanUsername } });
 			// Single generic message: unknown users, hashless legacy rows,
 			// and wrong passwords all look alike to an attacker.
 			// verifyPassword fails closed and always costs a full scrypt pass.
+			// Lockout failures are recorded ONLY for real accounts: recording
+			// them for unknown usernames would let an attacker pre-lock an
+			// account before its owner registers (lockout poisoning).
 			if (!user || !user.passwordHash) throw new Error("Invalid credentials");
 			const ok = await verifyPassword(cleanPassword, user.passwordHash);
-			if (!ok) throw new Error("Invalid credentials");
+			if (!ok) {
+				loginTracker.recordFailure(cleanUsername);
+				throw new Error("Invalid credentials");
+			}
+			loginTracker.recordSuccess(cleanUsername);
 			const tokenString = await generateAuthToken(user);
 			const token = {
 				accessToken: tokenString,
