@@ -163,7 +163,7 @@
 	<!-- Flip Clock Containers -->
 	<div class="flip-clock-container">
 		<!-- Days -->
-		<div class="flip-tile-col">
+		<div class="flip-tile-col" class:days-wide={timeLeft.days > 99}>
 			<div class="flip-card">
 				<span class="flip-digit">{timeLeft.days.toString().padStart(2, "0")}</span>
 			</div>
@@ -356,7 +356,8 @@
 		justify-content: center;
 		align-items: center;
 		width: 100%;
-		gap: 8px;
+		min-width: 0;
+		gap: clamp(4px, 1.5vw, 8px);
 		z-index: 2;
 	}
 
@@ -365,13 +366,15 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 6px;
-		width: 60px;
+		flex: 1 1 0;
+		min-width: 0;
+		max-width: 68px;
 	}
 
 	.flip-card {
 		position: relative;
 		width: 100%;
-		height: 60px;
+		height: clamp(52px, 14vw, 64px);
 		border-radius: 6px;
 		background-color: var(--tile-bg, #e4e4e4);
 		/* Premium 3D look with overlays */
@@ -406,7 +409,7 @@
 
 	.flip-digit {
 		font-family: 'Inter', 'Helvetica Neue', 'Arial Black', sans-serif;
-		font-size: 2rem;
+		font-size: clamp(1.3rem, 6.2vw, 2rem);
 		font-weight: 900;
 		color: var(--digit-color, #1a1a1a);
 		letter-spacing: -1px;
@@ -414,6 +417,14 @@
 		z-index: 2;
 		text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 		font-feature-settings: "tnum";
+		max-width: 100%;
+		overflow: hidden;
+	}
+
+	/* Days can run 3 digits (>99): shrink the digit so it stays inside the tile */
+	.days-wide .flip-digit {
+		font-size: clamp(1rem, 4.8vw, 1.4rem);
+		letter-spacing: -2px;
 	}
 
 	.flip-label {
@@ -426,7 +437,7 @@
 	}
 
 	.flip-colon {
-		font-size: 1.5rem;
+		font-size: clamp(1rem, 4vw, 1.5rem);
 		color: rgba(255, 255, 255, 0.15);
 		font-weight: bold;
 		padding-bottom: 18px;
@@ -495,6 +506,7 @@
 	}
 
 	.drawer-select {
+		width: 100%;
 		background: #2a2a2a;
 		color: white;
 		border: 1px solid rgba(255, 255, 255, 0.15);
