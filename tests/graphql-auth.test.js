@@ -53,8 +53,23 @@ test('GraphQL auth: signUp/login hash and verify passwords with scrypt', async (
 	await t.test('signUp rejects a blank password', async () => {
 		await assert.rejects(
 			signUp(null, { ...gqlUser(tag()), password: '' }),
-			/Password is required/
+			/at least 8 characters/,
+			'blank passwords rejected by the validation boundary (min length 8)'
 		);
+	});
+
+	await t.test('signUp rejects an overlong username', async () => {
+		await assert.rejects(
+			signUp(null, { ...gqlUser(tag()), username: 'x'.repeat(100) }),
+			/at most 30/
+		);
+	});
+
+	await t.test('signUp rejects a smuggled __proto__ key', async () => {
+		const payload = JSON.parse(
+			`{"username":"proto_${tag()}","email":"proto_${tag()}@example.com","password":"hunter2-hunter2","displayName":"P","__proto__":{"admin":true}}`
+		);
+		await assert.rejects(signUp(null, payload), /Forbidden key "__proto__"/);
 	});
 
 	await t.test('login: correct password gets a token, wrong password is rejected generically', async () => {

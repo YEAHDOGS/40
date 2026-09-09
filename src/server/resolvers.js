@@ -4,6 +4,13 @@ import { GraphQLError } from 'graphql';
 import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
 import { hashPassword, verifyPassword } from './password.js';
 import {
+	validateSignUp,
+	validatePostInput,
+	validateProfileInput,
+	assertString,
+	LIMITS
+} from './validation.js';
+import {
 	WIPE_INTERVAL_DAYS,
 	getNextWipe,
 	triggerWipeNow
@@ -207,27 +214,25 @@ export const resolvers = {
 	},
 
 	Mutation: {
-		signUp: async (_, { username, email, password, displayName }) => {
-			// Reject blank passwords at the boundary — hashPassword throws on
-			// them, and GraphQL's String! still allows "".
-			let passwordHash;
-			try {
-				passwordHash = await hashPassword(password);
-			} catch {
-				throw new Error('Password is required');
-			}
+		signUp: async (_, args) => {
+			// Boundary validation: length caps, email format, min password
+			// length, prototype-pollution guard. Takes the RAW args (not a
+			// destructured subset) so smuggled keys are rejected, not
+			// silently dropped. Throws ValidationError.
+			const clean = validateSignUp(args || {});
+			const passwordHash = await hashPassword(clean.password);
 			// Clean error instead of a Prisma P2002 500 on duplicates.
 			const existingUser = await prisma.user.findFirst({
-				where: { OR: [{ username }, { email }] }
+				where: { OR: [{ username: clean.username }, { email: clean.email }] }
 			});
 			if (existingUser) throw new Error('Username or email already exists');
 			const user = await prisma.user.create({
 				data: {
-					username,
-					email,
+					username: clean.username,
+					email: clean.email,
 					passwordHash,
-					displayName,
-					profileImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+					displayName: clean.displayName,
+					profileImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${clean.username}`
 				}
 			});
 			const tokenString = await generateAuthToken(user);
@@ -240,12 +245,17 @@ export const resolvers = {
 			return { token, user: sanitizeUser(user) };
 		},
 		login: async (_, { username, password }) => {
-			const user = await prisma.user.findUnique({ where: { username } });
+			// Type/length caps only — no min length: a legacy user with a
+			// short password must still be able to attempt login (it will
+			// fail closed on verify). Unknown users fail closed below.
+			const cleanUsername = assertString(username, { field: 'username', min: 1, max: LIMITS.email.max });
+			const cleanPassword = assertString(password, { field: 'password', min: 1, max: 4096 });
+			const user = await prisma.user.findUnique({ where: { username: cleanUsername } });
 			// Single generic message: unknown users, hashless legacy rows,
 			// and wrong passwords all look alike to an attacker.
 			// verifyPassword fails closed and always costs a full scrypt pass.
 			if (!user || !user.passwordHash) throw new Error("Invalid credentials");
-			const ok = await verifyPassword(password, user.passwordHash);
+			const ok = await verifyPassword(cleanPassword, user.passwordHash);
 			if (!ok) throw new Error("Invalid credentials");
 			const tokenString = await generateAuthToken(user);
 			const token = {
@@ -263,24 +273,29 @@ export const resolvers = {
 			return true;
 		},
 		updateProfile: async (_, { input }, context) => {
-			return prisma.user.update({
+			// validateProfileInput allowlists caller-settable fields AND
+			// caps their lengths — input is never spread raw into prisma.
+			const clean = validateProfileInput(input);
+			const updated = await prisma.user.update({
 				where: { id: context.userId },
-				data: input
+				data: clean
 			});
+			return sanitizeUser(updated);
 		},
 		createPost: async (_, { input }, context) => {
+			const clean = validatePostInput(input);
 			const post = await prisma.post.create({
 				data: {
-					content: input.content,
+					content: clean.content,
 					authorId: context.userId,
-					postType: input.media && input.media.length > 0 ? "IMAGE" : "TEXT",
-					replyToId: input.replyToId || null,
+					postType: clean.media && clean.media.length > 0 ? "IMAGE" : "TEXT",
+					replyToId: clean.replyToId || null,
 				},
 				include: { author: true }
 			});
 
-			if (input.media && input.media.length > 0) {
-				for (const m of input.media) {
+			if (clean.media && clean.media.length > 0) {
+				for (const m of clean.media) {
 					await prisma.media.create({
 						data: {
 							url: m.url,
@@ -293,30 +308,34 @@ export const resolvers = {
 			return post;
 		},
 		likePost: async (_, { postId }, context) => {
+			const cleanPostId = assertString(postId, { field: 'postId', min: 1, max: 100 });
 			return prisma.like.create({
-				data: { userId: context.userId, postId }
+				data: { userId: context.userId, postId: cleanPostId }
 			});
 		},
 		unlikePost: async (_, { postId }, context) => {
+			const cleanPostId = assertString(postId, { field: 'postId', min: 1, max: 100 });
 			await prisma.like.delete({
-				where: { userId_postId: { userId: context.userId, postId } }
+				where: { userId_postId: { userId: context.userId, postId: cleanPostId } }
 			});
 			return true;
 		},
 		retweetPost: async (_, { postId }, context) => {
+			const cleanPostId = assertString(postId, { field: 'postId', min: 1, max: 100 });
 			return prisma.post.create({
 				data: {
 					content: "",
 					authorId: context.userId,
 					postType: "REPOST",
-					repostOfId: postId
+					repostOfId: cleanPostId
 				},
 				include: { author: true }
 			});
 		},
 		followUser: async (_, { userId }, context) => {
+			const cleanUserId = assertString(userId, { field: 'userId', min: 1, max: 100 });
 			return prisma.follow.create({
-				data: { followerId: context.userId, followingId: userId }
+				data: { followerId: context.userId, followingId: cleanUserId }
 			});
 		},
 		triggerWipe: async () => {
