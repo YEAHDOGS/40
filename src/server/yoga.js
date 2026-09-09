@@ -28,7 +28,12 @@ const yoga = createYoga({
 			const decoded = await verifyAuthToken(token);
 			if (decoded) userId = decoded.userId;
 		}
-		return { userId, token };
+		// Request has no socket; fall back to the first X-Forwarded-For hop.
+		// The limiter keys per-account too, so a spoofed header still can't
+		// bypass the per-account bucket.
+		const forwarded = request.headers.get('x-forwarded-for');
+		const clientIp = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+		return { userId, token, clientIp };
 	}
 });
 
