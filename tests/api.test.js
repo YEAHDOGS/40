@@ -81,7 +81,7 @@ test('REST API Handler Unit Tests', async (t) => {
 
         assert.strictEqual(completedRes.statusCode, 400);
         const data = JSON.parse(completedRes.body);
-        assert.ok(data.error.includes('Username, email, and displayName are required'));
+        assert.ok(data.error.includes('email is required'));
     });
 
     await t.test('POST /api/auth/signup - Rejects missing password', async () => {
@@ -97,7 +97,7 @@ test('REST API Handler Unit Tests', async (t) => {
 
         assert.strictEqual(completedRes.statusCode, 400);
         const data = JSON.parse(completedRes.body);
-        assert.ok(data.error.includes('Password is required'));
+        assert.ok(data.error.includes('password is required'));
     });
 
     await t.test('POST /api/auth/signup + login - scrypt round trip, hash never leaks', async () => {
@@ -161,7 +161,7 @@ test('REST API Handler Unit Tests', async (t) => {
 
         assert.strictEqual(completedRes.statusCode, 400);
         const data = JSON.parse(completedRes.body);
-        assert.ok(data.error.includes('Username is required'));
+        assert.ok(data.error.includes('username is required'));
 
         // Username present, password missing -> password check fires
         const req2 = createMockReq('POST', '/api/auth/login', {}, { username: 'nobody' });
@@ -169,7 +169,7 @@ test('REST API Handler Unit Tests', async (t) => {
         await restApiHandler(req2, res2, () => {});
         const completedRes2 = await res2.wait();
         assert.strictEqual(completedRes2.statusCode, 400);
-        assert.ok(JSON.parse(completedRes2.body).error.includes('Password is required'));
+        assert.ok(JSON.parse(completedRes2.body).error.includes('password is required'));
     });
 
     await t.test('POST /api/posts - Authorization Guard blocks anonymous creation', async () => {
@@ -302,6 +302,62 @@ test('REST API Handler Unit Tests', async (t) => {
         const retrievedPost = JSON.parse(getPostResult.body);
         assert.strictEqual(retrievedPost.id, parentPostId);
         assert.strictEqual(retrievedPost.content, 'Parent Post Content');
+    });
+
+    await t.test('REST input validation - nastiest payloads get 400, never 500', async () => {
+        // Fresh user for an auth token
+        const tag = Math.random().toString(36).substring(7);
+        const signupReq = createMockReq('POST', '/api/auth/signup', {}, {
+            username: `rest_val_${tag}`,
+            email: `rest_val_${tag}@example.com`,
+            displayName: 'REST Validation',
+            password: 'hunter2-hunter2'
+        });
+        const signupRes = createMockRes();
+        await restApiHandler(signupReq, signupRes, () => {});
+        const signupData = JSON.parse((await signupRes.wait()).body);
+        const headers = { 'authorization': `Bearer ${signupData.token.accessToken}` };
+
+        const post = async (url, body) => {
+            const req = createMockReq('POST', url, headers, body);
+            const res = createMockRes();
+            await restApiHandler(req, res, () => {});
+            return res.wait();
+        };
+
+        // 100k-char content bomb
+        const bomb = await post('/api/posts', { content: 'x'.repeat(100_000) });
+        assert.strictEqual(bomb.statusCode, 400);
+        assert.ok(JSON.parse(bomb.body).error.includes('at most 2000'));
+
+        // Bad media type
+        const badMedia = await post('/api/posts', {
+            content: 'x',
+            media: [{ url: 'https://x.co/i.png', type: 'EXE' }]
+        });
+        assert.strictEqual(badMedia.statusCode, 400);
+        assert.ok(JSON.parse(badMedia.body).error.includes('must be one of'));
+
+        // Nested object smuggled as content (no Prisma 500)
+        const nested = await post('/api/posts', { content: { nested: 'object' } });
+        assert.strictEqual(nested.statusCode, 400);
+
+        // __proto__ smuggled into a profile update
+        const protoBody = JSON.parse('{"bio":"x","__proto__":{"admin":true}}');
+        const protoReq = createMockReq('PUT', '/api/users/profile', headers, protoBody);
+        const protoRes = createMockRes();
+        await restApiHandler(protoReq, protoRes, () => {});
+        const protoResult = await protoRes.wait();
+        assert.strictEqual(protoResult.statusCode, 400);
+        assert.ok(JSON.parse(protoResult.body).error.includes('Forbidden key'));
+
+        // Overlong bio
+        const longBioReq = createMockReq('PUT', '/api/users/profile', headers, { bio: 'x'.repeat(10_000) });
+        const longBioRes = createMockRes();
+        await restApiHandler(longBioReq, longBioRes, () => {});
+        const longBioResult = await longBioRes.wait();
+        assert.strictEqual(longBioResult.statusCode, 400);
+        assert.ok(JSON.parse(longBioResult.body).error.includes('at most 500'));
     });
 
 });

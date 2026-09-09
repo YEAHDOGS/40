@@ -4,6 +4,15 @@ const prisma = new PrismaClient();
 
 import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
 import { hashPassword, verifyPassword } from './password.js';
+import {
+    ValidationError,
+    validateSignUp,
+    validatePostInput,
+    validateProfileInput,
+    assertString,
+    assertInt,
+    LIMITS
+} from './validation.js';
 
 // Never leak the scrypt hash over the API. Every response that carries a
 // user record goes through this before sendJson.
@@ -106,21 +115,10 @@ export async function restApiHandler(req, res, next) {
         if (path === '/auth/signup' && method === 'POST') {
             console.log('[REST] Handling signup...');
             const body = await parseJsonBody(req);
-            // Never log the request body here: it contains the plaintext
-            // password. Log only the shape we need for debugging.
-            console.log('[REST] Signup body parsed:', {
-                username: body.username,
-                email: typeof body.email === 'string' ? '[redacted]' : body.email,
-                displayName: body.displayName,
-                password: body.password ? '[redacted]' : body.password
-            });
-            const { username, email, displayName, password } = body;
-            if (!username || !email || !displayName) {
-                return sendJson(res, { error: 'Username, email, and displayName are required' }, 400);
-            }
-            if (typeof password !== 'string' || password.length === 0) {
-                return sendJson(res, { error: 'Password is required' }, 400);
-            }
+            // Boundary validation: length caps, email format, min password
+            // length, prototype-pollution guard. Throws ValidationError -> 400.
+            const clean = validateSignUp(body);
+            const { username, email, displayName, password } = clean;
 
             console.log('[REST] Database check for existing user...');
             const existingUser = await prisma.user.findFirst({
@@ -164,13 +162,10 @@ export async function restApiHandler(req, res, next) {
         // 3. POST /auth/login
         if (path === '/auth/login' && method === 'POST') {
             const body = await parseJsonBody(req);
-            const { username, password } = body;
-            if (!username) {
-                return sendJson(res, { error: 'Username is required' }, 400);
-            }
-            if (typeof password !== 'string' || password.length === 0) {
-                return sendJson(res, { error: 'Password is required' }, 400);
-            }
+            // Type/length caps only — no min length on login (a legacy user
+            // with a short password must still attempt; it fails closed).
+            const username = assertString(body.username, { field: 'username', min: 1, max: LIMITS.email.max });
+            const password = assertString(body.password, { field: 'password', min: 1, max: 4096 });
 
             const user = await prisma.user.findUnique({ where: { username } });
             // Single generic message: unknown users, hashless legacy rows,
@@ -212,8 +207,14 @@ export async function restApiHandler(req, res, next) {
             if (!auth) {
                 return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
             }
-            const limit = parseInt(url.searchParams.get('limit')) || 50;
-            const offset = parseInt(url.searchParams.get('offset')) || 0;
+            // Pagination params are forgiving: garbage falls back to defaults.
+            let limit = 50, offset = 0;
+            try {
+                limit = assertInt(parseInt(url.searchParams.get('limit')) || 50, { field: 'limit', ...LIMITS.pageLimit });
+            } catch { /* default */ }
+            try {
+                offset = assertInt(parseInt(url.searchParams.get('offset')) || 0, { field: 'offset', min: 0 });
+            } catch { /* default */ }
 
             const posts = await prisma.post.findMany({
                 take: limit,
@@ -242,10 +243,10 @@ export async function restApiHandler(req, res, next) {
             }
 
             const body = await parseJsonBody(req);
-            const { content, media, replyToId } = body;
-            if (!content) {
-                return sendJson(res, { error: 'Content is required' }, 400);
-            }
+            // Boundary validation: content/media/hashtag caps, media-type
+            // enum allowlist, prototype-pollution guard.
+            const clean = validatePostInput(body);
+            const { content, media, replyToId } = clean;
 
             const post = await prisma.post.create({
                 data: {
@@ -261,12 +262,12 @@ export async function restApiHandler(req, res, next) {
                 }
             });
 
-            if (media && Array.isArray(media) && media.length > 0) {
+            if (media && media.length > 0) {
                 for (const m of media) {
                     await prisma.media.create({
                         data: {
                             url: m.url,
-                            mediaType: m.type || 'IMAGE',
+                            mediaType: m.type, // validated enum: IMAGE/VIDEO/GIF
                             postId: post.id
                         }
                     });
@@ -335,10 +336,7 @@ export async function restApiHandler(req, res, next) {
             }
 
             const body = await parseJsonBody(req);
-            const { content } = body;
-            if (!content) {
-                return sendJson(res, { error: 'Content is required' }, 400);
-            }
+            const content = assertString(body.content, { field: 'content', ...LIMITS.postContent });
 
             const updatedPost = await prisma.post.update({
                 where: { id: postId },
@@ -440,16 +438,9 @@ export async function restApiHandler(req, res, next) {
             }
 
             const body = await parseJsonBody(req);
-            const { displayName, bio, profileImage, bannerImage, movies, books, music } = body;
-
-            const updateData = {};
-            if (displayName !== undefined) updateData.displayName = displayName;
-            if (bio !== undefined) updateData.bio = bio;
-            if (profileImage !== undefined) updateData.profileImage = profileImage;
-            if (bannerImage !== undefined) updateData.bannerImage = bannerImage;
-            if (movies !== undefined) updateData.movies = movies;
-            if (books !== undefined) updateData.books = books;
-            if (music !== undefined) updateData.music = music;
+            // validateProfileInput allowlists caller-settable fields AND
+            // caps their lengths — body is never spread raw into prisma.
+            const updateData = validateProfileInput(body);
 
             const updatedUser = await prisma.user.update({
                 where: { id: auth.user.id },
@@ -462,6 +453,11 @@ export async function restApiHandler(req, res, next) {
         // If no match, fall through to other middleware
         next();
     } catch (err) {
+        // Validation errors are client errors (400), not server errors.
+        if (err instanceof ValidationError) {
+            console.error('REST API validation error:', err.message);
+            return sendJson(res, { error: err.message }, 400);
+        }
         console.error('REST API Error:', err);
         return sendJson(res, { error: 'Internal Server Error' }, 500);
     }

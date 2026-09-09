@@ -7,13 +7,15 @@ const randomId = Math.random().toString(36).substring(7);
 const user1 = {
     username: `tester1_${randomId}`,
     email: `tester1_${randomId}@example.com`,
-    displayName: 'Test User 1'
+    displayName: 'Test User 1',
+    password: 'forty-forty-40-forty'
 };
 
 const user2 = {
     username: `tester2_${randomId}`,
     email: `tester2_${randomId}@example.com`,
-    displayName: 'Test User 2'
+    displayName: 'Test User 2',
+    password: 'forty-forty-40-forty'
 };
 
 let token1 = null;
