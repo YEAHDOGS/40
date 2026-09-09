@@ -1,4 +1,4 @@
-# GraphQL Schema - Twitter Clone Social Media App
+# GraphQL Schema - 40Forty Ephemeral Social Media
 
 This directory contains the modular GraphQL schema definitions organized by domain.
 

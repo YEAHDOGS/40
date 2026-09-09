@@ -10,11 +10,7 @@
 		}
 	`;
 
-	const TriggerWipeMutation = gql`
-		mutation TriggerWipe {
-			triggerWipe
-		}
-	`;
+	const client = getContext("urql");
 
 	const client = getContext("urql");
 	const wipeQuery = queryStore({
@@ -52,10 +48,12 @@
 		const diff = endDate.getTime() - now.getTime();
 
 		if (diff <= 0) {
+			// The wipe is server-driven: hitting zero here just means the
+			// purge is due. Re-poll nextWipe (network-only) — the server's
+			// lazy wipe runs on that query and returns the new cycle's date.
 			timeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
-			client.mutation(TriggerWipeMutation).toPromise().then(() => {
-				wipeQuery.reexecute({ requestPolicy: 'network-only' });
-			});
+			endDate = null;
+			setTimeout(() => wipeQuery.reexecute({ requestPolicy: 'network-only' }), 5000);
 			return;
 		}
 

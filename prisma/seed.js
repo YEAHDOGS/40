@@ -9,7 +9,7 @@ const mockContents = [
 	"Just found out about 40Forty. Finally a place where I can speak freely without some corporate algorithm shadowbanning me. 🏴‍☠️",
 	"The new Matrix theme is insane. It genuinely feels like I'm jacking into the mainframe.",
 	"Does anyone else feel like the internet died in 2018? Everything now is just bots talking to bots to sell ads to humans.",
-	"Just a reminder: everything on this server gets zeroed out in 14 days. Don't post anything you need to keep.",
+	"Just a reminder: everything on this server gets zeroed out in 40 days. Don't post anything you need to keep.",
 	"Who else is using a burner device to access this node? Better safe than sorry.",
 	"Spotted a corporate crawler trying to index the public feeds. IP banned them immediately. Nice try, fed.",
 	"I miss the days when you could just browse a forum without needing 2FA and a blood sample.",
@@ -21,7 +21,7 @@ const mockContents = [
 	"Why does every social media app eventually turn into a shopping mall? Let's keep this place clean.",
 	"Waking up and realizing your data isn't being harvested feels incredibly good.",
 	"The aesthetic of this app makes me want to put on a leather trench coat and hack a mega-corporation.",
-	"System wipe approaching in T-minus 15 days. Prepare to zero out your local caches.",
+	"System wipe approaching in T-minus 40 days. Prepare to zero out your local caches.",
 	"I'm building a custom scraper just to save these posts before they disappear forever.",
 	"Wait, if everything deletes itself, what's the point of farming likes? Exactly. Just post.",
 	"I found a vulnerability in the latest chromium engine. Dropping the zero-day payload in the premium random chat tonight."
