@@ -37,7 +37,7 @@
 			const result = await client.mutation(SIGN_UP_MUTATION, {
 				username: username,
 				email: `${username}@${provider}.local`,
-				password: "mock_oauth_password",
+				password: "mock_oauth_password", // secret-scan:allow - mock OAuth fixture value
 				displayName: `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`
 			}).toPromise();
 
