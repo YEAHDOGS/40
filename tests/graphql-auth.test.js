@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
+import './db-test-env.js'; // provision a throwaway sqlite DB if DATABASE_URL unset
 import pkg from '@prisma/client';
 import { resolvers } from '../src/server/resolvers.js';
 
