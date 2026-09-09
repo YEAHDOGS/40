@@ -3,6 +3,15 @@ const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
 import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
+import { hashPassword, verifyPassword } from './password.js';
+
+// Never leak the scrypt hash over the API. Every response that carries a
+// user record goes through this before sendJson.
+const sanitizeUser = (user) => {
+    if (!user || typeof user !== 'object') return user;
+    const { passwordHash, ...safe } = user;
+    return safe;
+};
 
 // Helper to parse JSON request body
 const parseJsonBody = (req) => {
@@ -98,9 +107,12 @@ export async function restApiHandler(req, res, next) {
             console.log('[REST] Handling signup...');
             const body = await parseJsonBody(req);
             console.log('[REST] Signup body parsed:', body);
-            const { username, email, displayName } = body;
+            const { username, email, displayName, password } = body;
             if (!username || !email || !displayName) {
                 return sendJson(res, { error: 'Username, email, and displayName are required' }, 400);
+            }
+            if (typeof password !== 'string' || password.length === 0) {
+                return sendJson(res, { error: 'Password is required' }, 400);
             }
 
             console.log('[REST] Database check for existing user...');
@@ -112,11 +124,16 @@ export async function restApiHandler(req, res, next) {
                 return sendJson(res, { error: 'Username or email already exists' }, 400);
             }
 
+            // scrypt-hash the password before it ever touches the database.
+            // hashPassword throws on blank input; we 400'd on that above.
+            const passwordHash = await hashPassword(password);
+
             console.log('[REST] Creating user in database...');
             const user = await prisma.user.create({
                 data: {
                     username,
                     email,
+                    passwordHash,
                     displayName,
                     profileImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
                 }
@@ -133,21 +150,30 @@ export async function restApiHandler(req, res, next) {
                     expiresIn: 3456000,
                     tokenType: 'Bearer'
                 },
-                user
+                user: sanitizeUser(user)
             }, 201);
         }
 
         // 3. POST /auth/login
         if (path === '/auth/login' && method === 'POST') {
             const body = await parseJsonBody(req);
-            const { username } = body;
+            const { username, password } = body;
             if (!username) {
                 return sendJson(res, { error: 'Username is required' }, 400);
             }
+            if (typeof password !== 'string' || password.length === 0) {
+                return sendJson(res, { error: 'Password is required' }, 400);
+            }
 
             const user = await prisma.user.findUnique({ where: { username } });
-            if (!user) {
-                return sendJson(res, { error: 'Invalid credentials. User not found.' }, 401);
+            // Single generic message: unknown users, hashless legacy rows,
+            // and wrong passwords all look alike to an attacker.
+            if (!user || !user.passwordHash) {
+                return sendJson(res, { error: 'Invalid credentials' }, 401);
+            }
+            const ok = await verifyPassword(password, user.passwordHash);
+            if (!ok) {
+                return sendJson(res, { error: 'Invalid credentials' }, 401);
             }
 
             const tokenString = await generateAuthToken(user);
@@ -158,7 +184,7 @@ export async function restApiHandler(req, res, next) {
                     expiresIn: 3456000,
                     tokenType: 'Bearer'
                 },
-                user
+                user: sanitizeUser(user)
             });
         }
 
@@ -381,7 +407,7 @@ export async function restApiHandler(req, res, next) {
                 }
             });
 
-            return sendJson(res, { user, posts });
+            return sendJson(res, { user: sanitizeUser(user), posts });
         }
 
         // 11. PUT /users/profile
@@ -408,7 +434,7 @@ export async function restApiHandler(req, res, next) {
                 data: updateData
             });
 
-            return sendJson(res, updatedUser);
+            return sendJson(res, sanitizeUser(updatedUser));
         }
 
         // If no match, fall through to other middleware

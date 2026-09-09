@@ -5,11 +5,11 @@
  *
  *   scrypt$N16384r8p1$<salt-hex>$<key-hex>
  *
- * Staged for the REST auth fix: POST /auth/signup and POST /auth/login in
- * src/server/rest.js currently issue tokens with no credential check at
- * all — anyone can log in as any username. The endpoints need a
- * `passwordHash` column (prisma schema) plus this module before that hole
- * can be closed. This module is intentionally standalone so it can be
+ * Wired into the REST auth endpoints: POST /auth/signup and POST /auth/login
+ * in src/server/rest.js now hash/verify passwords with this module (see the
+ * `passwordHash` column on the User model). Anyone logging in as an arbitrary
+ * username with no password was possible before that fix.
+ * This module is intentionally standalone so it can be
  * regression-tested without a database or any npm packages.
  */
 

@@ -40,15 +40,19 @@ A token is obtained upon successful registration (`/auth/signup`) or login (`/au
 ### 2. Sign Up User
 * **Route:** `POST /auth/signup`
 * **Auth Required:** No
-* **Description:** Registers a new user. Passwords are mock-validated (accepted but not stored).
+* **Description:** Registers a new user. The password is hashed with scrypt
+  (see `src/server/password.js`) and stored as `passwordHash`; the hash is
+  never returned by the API.
 * **Request Body:**
   ```json
   {
     "username": "coder_jane",
     "email": "jane@example.com",
-    "displayName": "Jane Developer"
+    "displayName": "Jane Developer",
+    "password": "super-secret"
   }
   ```
+  `username`, `email`, `displayName`, and `password` are all required (400 otherwise).
 * **Success Response:**
   * **Status:** `201 Created`
   * **Body:**
@@ -76,11 +80,15 @@ A token is obtained upon successful registration (`/auth/signup`) or login (`/au
 ### 3. Login User
 * **Route:** `POST /auth/login`
 * **Auth Required:** No
-* **Description:** Logs in an existing user by their username. Passwords are mock-validated.
+* **Description:** Logs in an existing user by username + password. The
+  password is verified against the stored scrypt hash with constant-time
+  comparison; unknown users, hashless legacy rows, and wrong passwords all
+  return the same `401 Invalid credentials` response.
 * **Request Body:**
   ```json
   {
-    "username": "coder_jane"
+    "username": "coder_jane",
+    "password": "super-secret"
   }
   ```
 * **Success Response:**
