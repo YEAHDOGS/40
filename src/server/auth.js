@@ -1,10 +1,33 @@
 import jwt from 'jsonwebtoken';
 import { getRedisClient } from './redis.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'forty-dev-only-secret';
-if (!process.env.JWT_SECRET) {
-	console.warn("[auth] JWT_SECRET not set - using dev-only fallback. Set JWT_SECRET in production!");
+const DEV_ONLY_SECRET = 'forty-dev-only-secret';
+
+/**
+ * Resolve the JWT signing secret from the environment.
+ *
+ * Fail-safe contract: in production (NODE_ENV=production) a missing
+ * JWT_SECRET is a fatal startup error — the server refuses to boot rather
+ * than silently signing tokens with a hardcoded fallback. Outside
+ * production, the dev-only fallback is kept so local development stays
+ * zero-config, but it is loudly announced so it can never hide.
+ */
+export function resolveJwtSecret(env = process.env) {
+	const secret = env.JWT_SECRET;
+	if (!secret) {
+		if (env.NODE_ENV === 'production') {
+			throw new Error(
+				'[auth] FATAL: JWT_SECRET is not set. Refusing to start with NODE_ENV=production ' +
+				'— set JWT_SECRET to a real value (e.g. `openssl rand -base64 48`).'
+			);
+		}
+		console.warn('[auth] JWT_SECRET not set - using dev-only fallback. Set JWT_SECRET in production!');
+		return DEV_ONLY_SECRET;
+	}
+	return secret;
 }
+
+const JWT_SECRET = resolveJwtSecret();
 const TOKEN_EXPIRY = '40d'; // 40 days
 
 /**
