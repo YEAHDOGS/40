@@ -320,7 +320,7 @@ export const resolvers = {
 			});
 		},
 		triggerWipe: async () => {
-			// Manual wipe. Auth + admin gating happens in the requireAuth
+			// Manual wipe. Auth + ADMIN gating happens in the requireAdmin
 			// wrapper below; the 40-day clock restarts from now.
 			const { purged } = await triggerWipeNow(prisma);
 			console.log(`[wipe] manual trigger — purged ${purged.posts} posts, ${purged.media} media`);
@@ -340,10 +340,47 @@ const requireAuth = (resolver) => {
 	};
 };
 
+// Admin allowlist for platform-destructive operations. triggerWipe purges
+// EVERY post/like/media row, so gating it on "any logged-in user" was a
+// privilege-escalation hole: any signup could nuke the whole feed.
+// Configure with FORTY_ADMIN_IDS and/or FORTY_ADMIN_USERNAMES (comma
+// separated). Default is deny-by-default — with neither set, nobody can
+// trigger a manual wipe.
+const ADMIN_IDS = new Set(
+	(process.env.FORTY_ADMIN_IDS || '').split(',').map((s) => s.trim()).filter(Boolean)
+);
+const ADMIN_USERNAMES = new Set(
+	(process.env.FORTY_ADMIN_USERNAMES || '').split(',').map((s) => s.trim()).filter(Boolean)
+);
+
+const requireAdmin = (resolver) => {
+	return async (parent, args, context, info) => {
+		if (!context.userId) {
+			throw new GraphQLError("Unauthorized. Please provide a valid token.", {
+				extensions: { code: 'UNAUTHORIZED' }
+			});
+		}
+		let isAdmin = ADMIN_IDS.has(context.userId);
+		if (!isAdmin) {
+			const user = await prisma.user.findUnique({
+				where: { id: context.userId },
+				select: { username: true }
+			});
+			isAdmin = !!user && ADMIN_USERNAMES.has(user.username);
+		}
+		if (!isAdmin) {
+			throw new GraphQLError("Forbidden. Admin access required.", {
+				extensions: { code: 'FORBIDDEN' }
+			});
+		}
+		return resolver(parent, args, context, info);
+	};
+};
+
 for (const [name, resolver] of Object.entries(resolvers.Mutation)) {
-	// signUp/login are public by design. EVERYTHING else — including
-	// triggerWipe, which used to be callable by anyone — requires a token.
-	if (name !== 'signUp' && name !== 'login') {
-		resolvers.Mutation[name] = requireAuth(resolver);
-	}
+	// signUp/login are public by design. Everything else requires a token —
+	// EXCEPT triggerWipe, which purges all platform content and needs an
+	// admin allowlist entry on top of a token (requireAdmin).
+	if (name === 'signUp' || name === 'login') continue;
+	resolvers.Mutation[name] = name === 'triggerWipe' ? requireAdmin(resolver) : requireAuth(resolver);
 }
