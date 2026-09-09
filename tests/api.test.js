@@ -84,7 +84,7 @@ test('REST API Handler Unit Tests', async (t) => {
         assert.ok(data.error.includes('Username, email, and displayName are required'));
     });
 
-    await t.test('POST /api/auth/login - Validation of username', async () => {
+    await t.test('POST /api/auth/login - Validation of username and password', async () => {
         const req = createMockReq('POST', '/api/auth/login', {}, {});
         const res = createMockRes();
         
@@ -93,7 +93,7 @@ test('REST API Handler Unit Tests', async (t) => {
 
         assert.strictEqual(completedRes.statusCode, 400);
         const data = JSON.parse(completedRes.body);
-        assert.ok(data.error.includes('Username is required'));
+        assert.ok(data.error.includes('Username and password are required'));
     });
 
     await t.test('POST /api/posts - Authorization Guard blocks anonymous creation', async () => {
@@ -142,7 +142,8 @@ test('REST API Handler Unit Tests', async (t) => {
         const signupReq = createMockReq('POST', '/api/auth/signup', {}, {
             username: `unit_tester_${Math.random().toString(36).substring(7)}`,
             email: `unit_tester_${Math.random().toString(36).substring(7)}@example.com`,
-            displayName: 'Unit Tester'
+            displayName: 'Unit Tester',
+            password: 'correct-horse-42'
         });
         const signupRes = createMockRes();
         await restApiHandler(signupReq, signupRes, () => {});

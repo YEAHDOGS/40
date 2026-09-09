@@ -2,6 +2,7 @@ import pkg from '@prisma/client';
 import { DateTimeResolver, JSONResolver } from 'graphql-scalars';
 import { GraphQLError } from 'graphql';
 import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
+import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from './passwords.js';
 import {
 	WIPE_INTERVAL_DAYS,
 	getNextWipe,
@@ -10,6 +11,13 @@ import {
 
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
+
+/** Defense in depth: the scrypt hash must never leave the server. */
+const withoutPasswordHash = (user) => {
+	if (!user) return user;
+	const { passwordHash: _dropped, ...safe } = user;
+	return safe;
+};
 
 const mapCountPropToRelation = (modelName, prop) => {
 	if (modelName === 'user') {
@@ -197,11 +205,16 @@ export const resolvers = {
 
 	Mutation: {
 		signUp: async (_, { username, email, password, displayName }) => {
+			if (!password || password.length < MIN_PASSWORD_LENGTH) {
+				throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+			}
+			const passwordHash = await hashPassword(password);
 			const user = await prisma.user.create({
 				data: {
 					username,
 					email,
 					displayName,
+					passwordHash,
 					profileImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
 				}
 			});
@@ -212,11 +225,15 @@ export const resolvers = {
 				expiresIn: 3456000,
 				tokenType: "Bearer"
 			};
-			return { token, user };
+			return { token, user: withoutPasswordHash(user) };
 		},
 		login: async (_, { username, password }) => {
 			const user = await prisma.user.findUnique({ where: { username } });
-			if (!user) throw new Error("Invalid credentials");
+			// Uniform failure either way: no username enumeration, no hint
+			// about whether the password was the wrong part.
+			if (!user || !(await verifyPassword(password, user.passwordHash))) {
+				throw new Error("Invalid credentials");
+			}
 			const tokenString = await generateAuthToken(user);
 			const token = {
 				accessToken: tokenString,
@@ -224,7 +241,7 @@ export const resolvers = {
 				expiresIn: 3456000,
 				tokenType: "Bearer"
 			};
-			return { token, user };
+			return { token, user: withoutPasswordHash(user) };
 		},
 		logout: async (_, args, context) => {
 			if (context.token) {
