@@ -24,6 +24,35 @@ and the scheduler all derive from it.
 
 Full contract: [docs/wipe-architecture.md](docs/wipe-architecture.md).
 
+# Password hashing (server)
+
+`src/server/password.js` hashes passwords with **scrypt** (N=16384, r=8, p=1,
+64-byte key, 16-byte salt) from `node:crypto` — stdlib only, zero new
+dependencies.
+
+```js
+import { hashPassword, verifyPassword } from './src/server/password.js';
+
+const stored = await hashPassword('hunter2'); // 'scrypt$N16384r8p1$<salt>$<key>'
+await verifyPassword('hunter2', stored);      // true
+await verifyPassword('wrong', stored);       // false
+await verifyPassword('hunter2', 'garbage');  // false — fails closed, never throws
+```
+
+Rules of the road:
+
+- `hashPassword` **throws** on empty/non-string input — reject blank passwords
+  at the API boundary, don't silently hash them.
+- `verifyPassword` **returns false, never throws** on malformed stored values —
+  a corrupt row fails closed instead of 500ing.
+- Comparison is constant-time (`timingSafeEqual`); `verifyPassword` always
+  costs a full scrypt pass on well-formed input so correct and wrong passwords
+  look alike to a stopwatch.
+- This module is staged for the REST auth fix: `POST /auth/signup` and
+  `POST /auth/login` currently issue tokens with no credential check. They need
+  a `passwordHash` column on the user model plus this module before that hole
+  closes.
+
 # Features
 
 - All content is blocked and hidden from non-users. This is a privacy-first social media
