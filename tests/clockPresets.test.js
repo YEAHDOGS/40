@@ -43,6 +43,8 @@ test('clock theme presets stay structurally sound', async (t) => {
 
 	await t.test('communityThemes are additive and well-formed', () => {
 		assert.ok(Array.isArray(communityThemes));
+		const ids = communityThemes.map((theme) => theme.id);
+		assert.strictEqual(new Set(ids).size, ids.length, `duplicate community theme ids: ${ids}`);
 		for (const theme of communityThemes) {
 			for (const key of REQUIRED_KEYS) {
 				assert.ok(key in theme, `community theme missing key '${key}'`);
