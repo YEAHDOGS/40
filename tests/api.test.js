@@ -186,6 +186,38 @@ test('REST API Handler Unit Tests', async (t) => {
         assert.ok(data.error.includes('Unauthorized'));
     });
 
+    await t.test('GET /api/posts - Anonymous read denied (content is member-only)', async () => {
+        const req = createMockReq('GET', '/api/posts');
+        const res = createMockRes();
+
+        await restApiHandler(req, res, () => {});
+        const completedRes = await res.wait();
+
+        assert.strictEqual(completedRes.statusCode, 401);
+        const data = JSON.parse(completedRes.body);
+        assert.ok(data.error.includes('Unauthorized'));
+    });
+
+    await t.test('GET /api/posts/:id - Anonymous read denied (content is member-only)', async () => {
+        const req = createMockReq('GET', '/api/posts/some-id');
+        const res = createMockRes();
+
+        await restApiHandler(req, res, () => {});
+        const completedRes = await res.wait();
+
+        assert.strictEqual(completedRes.statusCode, 401);
+    });
+
+    await t.test('GET /api/users/:username - Anonymous read denied (content is member-only)', async () => {
+        const req = createMockReq('GET', '/api/users/someone');
+        const res = createMockRes();
+
+        await restApiHandler(req, res, () => {});
+        const completedRes = await res.wait();
+
+        assert.strictEqual(completedRes.statusCode, 401);
+    });
+
     await t.test('PUT /api/users/profile - Authorization Guard blocks anonymous update', async () => {
         const req = createMockReq('PUT', '/api/users/profile', {}, {
             bio: 'New bio'
@@ -258,8 +290,10 @@ test('REST API Handler Unit Tests', async (t) => {
         const commentPost = JSON.parse(createCommentResult.body);
         assert.strictEqual(commentPost.replyToId, parentPostId);
 
-        // 4. Retrieve single post details
-        const getPostReq = createMockReq('GET', `/api/posts/${parentPostId}`);
+        // 4. Retrieve single post details (content reads require a token)
+        const getPostReq = createMockReq('GET', `/api/posts/${parentPostId}`, {
+            'authorization': `Bearer ${token}`
+        });
         const getPostRes = createMockRes();
         await restApiHandler(getPostReq, getPostRes, () => {});
         const getPostResult = await getPostRes.wait();
