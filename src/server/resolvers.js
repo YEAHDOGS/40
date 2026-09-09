@@ -340,6 +340,13 @@ const requireAuth = (resolver) => {
 	};
 };
 
+// Content privacy invariant: 40Forty is login-gated by design ("all content
+// is blocked and hidden from non-users" in the README). Every query that
+// returns user-identifiable content requires a valid token — an
+// unauthenticated caller gets UNAUTHORIZED before any row is touched.
+// nextWipe is deliberately exempt: it returns only a timestamp, and the
+// countdown is the product's public brand.
+
 // Admin allowlist for platform-destructive operations. triggerWipe purges
 // EVERY post/like/media row, so gating it on "any logged-in user" was a
 // privilege-escalation hole: any signup could nuke the whole feed.
@@ -383,4 +390,11 @@ for (const [name, resolver] of Object.entries(resolvers.Mutation)) {
 	// admin allowlist entry on top of a token (requireAdmin).
 	if (name === 'signUp' || name === 'login') continue;
 	resolvers.Mutation[name] = name === 'triggerWipe' ? requireAdmin(resolver) : requireAuth(resolver);
+}
+
+// Read-side gating: content queries require a token. nextWipe stays public
+// (timestamp only, no user data — see the invariant above).
+for (const [name, resolver] of Object.entries(resolvers.Query)) {
+	if (name === 'nextWipe') continue;
+	resolvers.Query[name] = requireAuth(resolver);
 }
