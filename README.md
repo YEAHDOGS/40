@@ -71,7 +71,8 @@ This module is wired into both auth surfaces:
 These invariants are enforced in code and covered by regression tests
 (`tests/graphql-content-auth.test.js`, `tests/graphql-validation.test.js`,
 `tests/graphql-wipe-admin.test.js`, `tests/validation.test.js`,
-`tests/api.test.js`, `tests/rate-limit.test.js`, `tests/auth-guard.test.js`).
+`tests/api.test.js`, `tests/rate-limit.test.js`, `tests/auth-guard.test.js`,
+`tests/client-ip.test.js`).
 Any change that weakens one must update the tests and
 this section together.
 
@@ -126,6 +127,12 @@ this section together.
   `FORTY_LOCKOUT_MAX_FAILS`, `FORTY_LOCKOUT_MS`, plus `..._WINDOW_MS`
   variants); garbage values fall back to the safe defaults. State is
   in-memory and memory-bounded (expired buckets are swept).
+- **Rate-limit identity can't be forged:** client IP is resolved by
+  `src/server/client-ip.js`, which honors `X-Forwarded-For` / `X-Real-IP`
+  only when `TRUST_PROXY=1` is set (the app sits behind a proxy you control
+  that sanitizes them). Default is the direct transport address (`unknown`
+  when the transport gives nothing) — otherwise an attacker could rotate a
+  forged header per request and mint a fresh per-IP budget each time.
 
 # Features
 
