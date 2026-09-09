@@ -24,6 +24,13 @@ and the scheduler all derive from it.
 
 Full contract: [docs/wipe-architecture.md](docs/wipe-architecture.md).
 
+# Configuration
+
+Environment variables are documented in [docs/env.md](docs/env.md).
+The short version: with `NODE_ENV=production` the server **refuses to boot
+without `JWT_SECRET` set** — a FATAL banner names the missing variable before
+the process crashes, by design. Start from `.env.example` for local dev.
+
 # Features
 
 - All content is blocked and hidden from non-users. This is a privacy-first social media
