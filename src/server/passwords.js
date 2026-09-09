@@ -20,6 +20,87 @@ const SALT_LEN = 16;
 
 export const MIN_PASSWORD_LENGTH = 8;
 
+/**
+ * Blocklist of the most commonly used passwords (all lowercase). An
+ * 8-character minimum alone still lets through "password123" — this rejects
+ * the low-hanging fruit that credential-stuffing lists try first.
+ * Matched case-insensitively via isCommonPassword().
+ */
+const COMMON_PASSWORDS = new Set([
+	'password',
+	'password1',
+	'password12',
+	'password123',
+	'password1234',
+	'passw0rd',
+	'p@ssw0rd',
+	'changeme1',
+	'welcome12',
+	'welcome123',
+	'qwerty12',
+	'qwerty123',
+	'qwertyuiop',
+	'12345678',
+	'123456789',
+	'1234567890',
+	'123456a1',
+	'11111111',
+	'00000000',
+	'12341234',
+	'1q2w3e4r',
+	'1qaz2wsx',
+	'zxcvbnm1',
+	'abc12345',
+	'abcdefg1',
+	'letmein12',
+	'letmein123',
+	'iloveyou12',
+	'iloveyou123',
+	'trustno1',
+	'sunshine1',
+	'master123',
+	'hello123',
+	'freedom12',
+	'whatever1',
+	'monkey123',
+	'dragon123',
+	'superman1',
+	'batman123',
+	'starwars1',
+	'harley123',
+	'jesus123',
+	'football1',
+	'baseball1',
+	'admin123',
+	'secret123',
+	'shadow12',
+	'tigger12',
+	'princess1',
+	'computer1',
+	'corvette1',
+	'mustang1',
+	'ginger12',
+	'michelle1',
+	'charlie12',
+	'thomas12',
+	'daniel12',
+	'jordan12',
+	'andrew12',
+	'taylor12',
+	'michael1',
+	'jennifer1',
+	'hunter123'
+]);
+
+/**
+ * True if the password is on the common-password blocklist
+ * (case-insensitive). Non-strings are never "common" — they fail elsewhere.
+ */
+export function isCommonPassword(password) {
+	if (typeof password !== 'string') return false;
+	return COMMON_PASSWORDS.has(password.toLowerCase());
+}
+
 function scryptAsync(password, salt) {
 	return new Promise((resolve, reject) => {
 		scrypt(
@@ -32,12 +113,17 @@ function scryptAsync(password, salt) {
 	});
 }
 
-/** Hash a plaintext password. Throws on anything shorter than the minimum. */
+/** Hash a plaintext password. Throws on anything shorter than the minimum
+ *  or on the common-password blocklist — the server must never produce a
+ *  hash for a credential that a stuffing list would try first. */
 export async function hashPassword(password) {
 	if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
 		throw new Error(
 			`[passwords] password must be at least ${MIN_PASSWORD_LENGTH} characters`
 		);
+	}
+	if (isCommonPassword(password)) {
+		throw new Error('[passwords] password is too common — pick a harder one');
 	}
 	const salt = randomBytes(SALT_LEN);
 	const key = await scryptAsync(password, salt);

@@ -2,7 +2,7 @@ import pkg from '@prisma/client';
 import { DateTimeResolver, JSONResolver } from 'graphql-scalars';
 import { GraphQLError } from 'graphql';
 import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
-import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from './passwords.js';
+import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH, isCommonPassword } from './passwords.js';
 import {
 	loginRateLimiter,
 	loginAttemptLog,
@@ -212,6 +212,9 @@ export const resolvers = {
 		signUp: async (_, { username, email, password, displayName }) => {
 			if (!password || password.length < MIN_PASSWORD_LENGTH) {
 				throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+			}
+			if (isCommonPassword(password)) {
+				throw new Error('Password is too common. Pick a stronger one.');
 			}
 			const passwordHash = await hashPassword(password);
 			const user = await prisma.user.create({
