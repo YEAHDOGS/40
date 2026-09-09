@@ -2,6 +2,7 @@ import pkg from '@prisma/client';
 import { DateTimeResolver, JSONResolver } from 'graphql-scalars';
 import { GraphQLError } from 'graphql';
 import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
+import { hashPassword, verifyPassword } from './password.js';
 import {
 	WIPE_INTERVAL_DAYS,
 	getNextWipe,
@@ -48,6 +49,16 @@ const getMockValue = (modelName, prop) => {
 		if (prop === 'isBookmarked') return false;
 	}
 	return undefined;
+};
+
+// The scrypt hash must never cross the API boundary. The GraphQL User type
+// deliberately omits passwordHash, and scripts/fix-graphql.js strips it from
+// the generated schema — this belt-and-braces strip keeps a future schema
+// change from silently starting to leak it (mirrors rest.js sanitizeUser).
+const sanitizeUser = (user) => {
+	if (!user || typeof user !== 'object') return user;
+	const { passwordHash, ...safe } = user;
+	return safe;
 };
 
 const autoResolve = (modelName, overrides = {}) => {
@@ -197,10 +208,24 @@ export const resolvers = {
 
 	Mutation: {
 		signUp: async (_, { username, email, password, displayName }) => {
+			// Reject blank passwords at the boundary — hashPassword throws on
+			// them, and GraphQL's String! still allows "".
+			let passwordHash;
+			try {
+				passwordHash = await hashPassword(password);
+			} catch {
+				throw new Error('Password is required');
+			}
+			// Clean error instead of a Prisma P2002 500 on duplicates.
+			const existingUser = await prisma.user.findFirst({
+				where: { OR: [{ username }, { email }] }
+			});
+			if (existingUser) throw new Error('Username or email already exists');
 			const user = await prisma.user.create({
 				data: {
 					username,
 					email,
+					passwordHash,
 					displayName,
 					profileImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
 				}
@@ -212,11 +237,16 @@ export const resolvers = {
 				expiresIn: 3456000,
 				tokenType: "Bearer"
 			};
-			return { token, user };
+			return { token, user: sanitizeUser(user) };
 		},
 		login: async (_, { username, password }) => {
 			const user = await prisma.user.findUnique({ where: { username } });
-			if (!user) throw new Error("Invalid credentials");
+			// Single generic message: unknown users, hashless legacy rows,
+			// and wrong passwords all look alike to an attacker.
+			// verifyPassword fails closed and always costs a full scrypt pass.
+			if (!user || !user.passwordHash) throw new Error("Invalid credentials");
+			const ok = await verifyPassword(password, user.passwordHash);
+			if (!ok) throw new Error("Invalid credentials");
 			const tokenString = await generateAuthToken(user);
 			const token = {
 				accessToken: tokenString,
@@ -224,7 +254,7 @@ export const resolvers = {
 				expiresIn: 3456000,
 				tokenType: "Bearer"
 			};
-			return { token, user };
+			return { token, user: sanitizeUser(user) };
 		},
 		logout: async (_, args, context) => {
 			if (context.token) {
