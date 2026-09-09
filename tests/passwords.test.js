@@ -10,7 +10,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import { Readable } from 'stream';
 import './setup-db.js';
-import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from '../src/server/passwords.js';
+import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH, isCommonPassword } from '../src/server/passwords.js';
 const { restApiHandler } = await import('../src/server/rest.js');
 
 // ---- unit: the hash itself ----
@@ -48,6 +48,23 @@ test('password hashing', async (t) => {
 
 	await t.test('minimum length is 8', () => {
 		assert.strictEqual(MIN_PASSWORD_LENGTH, 8);
+	});
+
+	await t.test('common passwords are detected case-insensitively', () => {
+		assert.strictEqual(isCommonPassword('password123'), true);
+		assert.strictEqual(isCommonPassword('Password123'), true);
+		assert.strictEqual(isCommonPassword('QWERTY123'), true);
+		assert.strictEqual(isCommonPassword('letmein123'), true);
+		assert.strictEqual(isCommonPassword('correct-horse-42'), false);
+		assert.strictEqual(isCommonPassword('Tr0ub4dor&3-ish'), false);
+		assert.strictEqual(isCommonPassword(''), false);
+		assert.strictEqual(isCommonPassword(null), false);
+		assert.strictEqual(isCommonPassword(undefined), false);
+	});
+
+	await t.test('common passwords are rejected at hash time', async () => {
+		await assert.rejects(() => hashPassword('password123'), /too common/);
+		await assert.rejects(() => hashPassword('Qwerty123'), /too common/);
 	});
 });
 
@@ -120,6 +137,12 @@ test('REST password auth end to end', async (t) => {
 		const { status, data } = await rest('POST', '/api/auth/signup', { ...creds, password: 'short' });
 		assert.strictEqual(status, 400);
 		assert.ok(data.error.includes('Password is required'));
+	});
+
+	await t.test('signup with a common password is rejected', async () => {
+		const { status, data } = await rest('POST', '/api/auth/signup', { ...creds, password: 'password123' });
+		assert.strictEqual(status, 400);
+		assert.ok(data.error.includes('too common'));
 	});
 
 	await t.test('signup succeeds and never returns the hash', async () => {

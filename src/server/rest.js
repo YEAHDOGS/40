@@ -3,7 +3,7 @@ const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
 import { generateAuthToken, verifyAuthToken, revokeAuthToken, revokeAllUserSessions, countUserSessions } from './auth.js';
-import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from './passwords.js';
+import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH, isCommonPassword } from './passwords.js';
 import {
 	loginRateLimiter,
 	loginAttemptLog,
@@ -117,6 +117,9 @@ export async function restApiHandler(req, res, next) {
             }
             if (!password || password.length < MIN_PASSWORD_LENGTH) {
                 return sendJson(res, { error: `Password is required (min ${MIN_PASSWORD_LENGTH} characters)` }, 400);
+            }
+            if (isCommonPassword(password)) {
+                return sendJson(res, { error: 'Password is too common. Pick a stronger one.' }, 400);
             }
 
             console.log('[REST] Database check for existing user...');
@@ -232,6 +235,9 @@ export async function restApiHandler(req, res, next) {
             }
             if (newPassword.length < MIN_PASSWORD_LENGTH) {
                 return sendJson(res, { error: `New password must be at least ${MIN_PASSWORD_LENGTH} characters` }, 400);
+            }
+            if (isCommonPassword(newPassword)) {
+                return sendJson(res, { error: 'New password is too common. Pick a stronger one.' }, 400);
             }
 
             const user = await prisma.user.findUnique({ where: { id: auth.user.id } });
