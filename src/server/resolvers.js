@@ -77,6 +77,25 @@ const sanitizeUser = (user) => {
 	return safe;
 };
 
+// Target-validation invariant: relation mutations (like/retweet/follow)
+// must reference EXISTING rows. Without these checks Prisma throws a raw
+// P2003 foreign-key error, which surfaces as an unhandled 500 whose payload
+// carries database-internals shape. Fail closed with a clean NOT_FOUND
+// before any write is attempted.
+const assertPostExists = async (postId) => {
+	const post = await prisma.post.findUnique({ where: { id: postId }, select: { id: true } });
+	if (!post) {
+		throw new GraphQLError("Post not found.", { extensions: { code: 'NOT_FOUND' } });
+	}
+};
+
+const assertUserExists = async (userId) => {
+	const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+	if (!user) {
+		throw new GraphQLError("User not found.", { extensions: { code: 'NOT_FOUND' } });
+	}
+};
+
 const autoResolve = (modelName, overrides = {}) => {
 	const handler = {
 		get(target, prop) {
@@ -344,19 +363,29 @@ export const resolvers = {
 		},
 		likePost: async (_, { postId }, context) => {
 			const cleanPostId = assertString(postId, { field: 'postId', min: 1, max: 100 });
+			await assertPostExists(cleanPostId);
+			// Idempotent: a repeat like returns the existing row instead of
+			// a P2002 unique-violation 500.
+			const existing = await prisma.like.findUnique({
+				where: { userId_postId: { userId: context.userId, postId: cleanPostId } }
+			});
+			if (existing) return existing;
 			return prisma.like.create({
 				data: { userId: context.userId, postId: cleanPostId }
 			});
 		},
 		unlikePost: async (_, { postId }, context) => {
 			const cleanPostId = assertString(postId, { field: 'postId', min: 1, max: 100 });
-			await prisma.like.delete({
-				where: { userId_postId: { userId: context.userId, postId: cleanPostId } }
+			// Idempotent: un-liking something not liked is a no-op true,
+			// not a P2025 500.
+			await prisma.like.deleteMany({
+				where: { userId: context.userId, postId: cleanPostId }
 			});
 			return true;
 		},
 		retweetPost: async (_, { postId }, context) => {
 			const cleanPostId = assertString(postId, { field: 'postId', min: 1, max: 100 });
+			await assertPostExists(cleanPostId);
 			return prisma.post.create({
 				data: {
 					content: "",
@@ -369,6 +398,20 @@ export const resolvers = {
 		},
 		followUser: async (_, { userId }, context) => {
 			const cleanUserId = assertString(userId, { field: 'userId', min: 1, max: 100 });
+			// No self-follows: a followerId === followingId row is degenerate
+			// (it inflates follower counts and breaks follow-graph queries).
+			if (cleanUserId === context.userId) {
+				throw new GraphQLError("You cannot follow yourself.", {
+					extensions: { code: 'BAD_USER_INPUT' }
+				});
+			}
+			await assertUserExists(cleanUserId);
+			// Idempotent: a repeat follow returns the existing row instead of
+			// a P2002 unique-violation 500.
+			const existing = await prisma.follow.findUnique({
+				where: { followerId_followingId: { followerId: context.userId, followingId: cleanUserId } }
+			});
+			if (existing) return existing;
 			return prisma.follow.create({
 				data: { followerId: context.userId, followingId: cleanUserId }
 			});
