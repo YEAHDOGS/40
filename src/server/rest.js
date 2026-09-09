@@ -2,7 +2,7 @@ import pkg from '@prisma/client';
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
-import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
+import { generateAuthToken, verifyAuthToken, revokeAuthToken, revokeAllUserSessions, countUserSessions } from './auth.js';
 import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from './passwords.js';
 import {
 	loginRateLimiter,
@@ -212,7 +212,44 @@ export async function restApiHandler(req, res, next) {
                 return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
             }
             await revokeAuthToken(auth.token);
+            res.setHeader('Set-Cookie', clearSessionCookie());
             return sendJson(res, { success: true, message: 'Logged out successfully' });
+        }
+
+        // 4b. POST /auth/change-password — requires the CURRENT password,
+        // then kills every other session so a compromised session dies with
+        // the old password. The session making the change stays alive.
+        if (path === '/auth/change-password' && method === 'POST') {
+            const auth = await getAuthUser(req);
+            if (!auth) {
+                return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
+            }
+
+            const body = await parseJsonBody(req);
+            const { currentPassword, newPassword } = body;
+            if (!currentPassword || !newPassword) {
+                return sendJson(res, { error: 'Current password and new password are required' }, 400);
+            }
+            if (newPassword.length < MIN_PASSWORD_LENGTH) {
+                return sendJson(res, { error: `New password must be at least ${MIN_PASSWORD_LENGTH} characters` }, 400);
+            }
+
+            const user = await prisma.user.findUnique({ where: { id: auth.user.id } });
+            // Uniform error — but here the username is already authenticated,
+            // so "incorrect" is about the password only.
+            if (!user || !(await verifyPassword(currentPassword, user.passwordHash))) {
+                return sendJson(res, { error: 'Current password is incorrect' }, 401);
+            }
+
+            const passwordHash = await hashPassword(newPassword);
+            await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+
+            const sessionsRevoked = await revokeAllUserSessions(user.id, { exceptToken: auth.token });
+            return sendJson(res, {
+                success: true,
+                message: 'Password changed. Other sessions have been signed out.',
+                sessionsRevoked
+            });
         }
 
         // 5. GET /posts

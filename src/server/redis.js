@@ -31,6 +31,29 @@ class InMemoryRedisMock {
         this.store.delete(key);
         return existed ? 1 : 0;
     }
+
+    // Set commands (used for the per-user session index in auth.js)
+    async sadd(key, member) {
+        let set = this.store.get(key);
+        if (!(set instanceof Set)) {
+            set = new Set();
+            this.store.set(key, set);
+        }
+        const had = set.has(member);
+        set.add(member);
+        return had ? 0 : 1;
+    }
+
+    async srem(key, member) {
+        const set = this.store.get(key);
+        if (!(set instanceof Set)) return 0;
+        return set.delete(member) ? 1 : 0;
+    }
+
+    async smembers(key) {
+        const set = this.store.get(key);
+        return set instanceof Set ? [...set] : [];
+    }
     
     on(event, handler) {
         // Mock event emitter
