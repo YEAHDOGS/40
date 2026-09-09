@@ -10,6 +10,9 @@
  */
 
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // OWASP-flavored scrypt parameters: 128MB memory, ~interactive cost.
 const SCRYPT_N = 16384;
@@ -21,12 +24,30 @@ const SALT_LEN = 16;
 export const MIN_PASSWORD_LENGTH = 8;
 
 /**
- * Blocklist of the most commonly used passwords (all lowercase). An
- * 8-character minimum alone still lets through "password123" — this rejects
- * the low-hanging fruit that credential-stuffing lists try first.
- * Matched case-insensitively via isCommonPassword().
+ * Blocklist of the most commonly used passwords (all lowercase), shipped as
+ * a curated ~1500-entry file — fully OFFLINE, never fetched from the
+ * network. An 8-character minimum alone still lets through "password123" —
+ * this rejects the low-hanging fruit that credential-stuffing lists try
+ * first. Matched case-insensitively via isCommonPassword().
+ *
+ * Startup behavior (same philosophy as the JWT_SECRET self-check in auth.js):
+ * if the file is missing or degraded below BLOCKLIST_MIN_ENTRIES, the
+ * module THROWS at import time so the server refuses to boot without its
+ * credential-stuffing defense — never silently unprotected.
  */
-const COMMON_PASSWORDS = new Set([
+const BLOCKLIST_PATH = join(
+	dirname(fileURLToPath(import.meta.url)),
+	'common-passwords.txt'
+);
+/** Floor on shipped entries — catches a truncated/corrupted file. */
+export const BLOCKLIST_MIN_ENTRIES = 1000;
+
+/**
+ * Hardened core set, always enforced even if the shipped file is ever
+ * trimmed. Every entry below must also exist in common-passwords.txt
+ * (tests assert this) — this is belt-and-braces, not the source of truth.
+ */
+const CORE_COMMON_PASSWORDS = new Set([
 	'password',
 	'password1',
 	'password12',
@@ -91,6 +112,43 @@ const COMMON_PASSWORDS = new Set([
 	'jennifer1',
 	'hunter123'
 ]);
+
+/**
+ * Load the shipped blocklist from disk. Throws on a missing file or a
+ * degraded (truncated) list — the server fails closed rather than running
+ * without its common-password defense.
+ */
+export function loadCommonPasswordBlocklist(path = BLOCKLIST_PATH) {
+	let raw;
+	try {
+		raw = readFileSync(path, 'utf8');
+	} catch (err) {
+		throw new Error(
+			`[passwords] FATAL: common-password blocklist unreadable at ${path} — ` +
+				`refusing to start without it. (${err.message})`
+		);
+	}
+	const entries = raw
+		.split('\n')
+		.map((line) => line.trim().toLowerCase())
+		.filter((line) => line && !line.startsWith('#'));
+	const unique = new Set(entries);
+	if (unique.size < BLOCKLIST_MIN_ENTRIES) {
+		throw new Error(
+			`[passwords] FATAL: common-password blocklist degraded ` +
+				`(${unique.size} entries < ${BLOCKLIST_MIN_ENTRIES} minimum) — refusing to start.`
+		);
+	}
+	return unique;
+}
+
+const COMMON_PASSWORDS = new Set([
+	...loadCommonPasswordBlocklist(),
+	...CORE_COMMON_PASSWORDS
+]);
+
+/** Number of unique blocklisted passwords enforced at runtime. */
+export const COMMON_PASSWORD_COUNT = COMMON_PASSWORDS.size;
 
 /**
  * True if the password is on the common-password blocklist

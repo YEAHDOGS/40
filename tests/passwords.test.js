@@ -10,7 +10,10 @@ import test from 'node:test';
 import assert from 'node:assert';
 import { Readable } from 'stream';
 import './setup-db.js';
-import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH, isCommonPassword } from '../src/server/passwords.js';
+import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH, isCommonPassword, loadCommonPasswordBlocklist, COMMON_PASSWORD_COUNT, BLOCKLIST_MIN_ENTRIES } from '../src/server/passwords.js';
+import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 const { restApiHandler } = await import('../src/server/rest.js');
 
 // ---- unit: the hash itself ----
@@ -65,6 +68,35 @@ test('password hashing', async (t) => {
 	await t.test('common passwords are rejected at hash time', async () => {
 		await assert.rejects(() => hashPassword('password123'), /too common/);
 		await assert.rejects(() => hashPassword('Qwerty123'), /too common/);
+	});
+
+	await t.test('blocklist ships ~1000+ entries from a local file (offline)', () => {
+		assert.ok(COMMON_PASSWORD_COUNT >= BLOCKLIST_MIN_ENTRIES, `expected >= ${BLOCKLIST_MIN_ENTRIES}, got ${COMMON_PASSWORD_COUNT}`);
+		assert.ok(BLOCKLIST_MIN_ENTRIES >= 1000);
+		// Loader is pure local disk I/O — no network involved, works air-gapped.
+		const reloaded = loadCommonPasswordBlocklist();
+		assert.strictEqual(reloaded.size + 0 >= BLOCKLIST_MIN_ENTRIES, true);
+		for (const pw of ['password123', 'qwertyuiop', 'letmein123', 'iloveyou123', 'football1', 'dragon123', 'superman1', 'michael1', 'jordan123', 'harrypotter123', 'minecraft123', 'starwars123', 'darthvader123', 'naruto123', 'breakingbad', 'heisenberg', 'winterfell']) {
+			assert.strictEqual(isCommonPassword(pw), true, `${pw} should be blocklisted`);
+			assert.strictEqual(isCommonPassword(pw.toUpperCase()), true, `${pw} (upper) should be blocklisted`);
+		}
+	});
+
+	await t.test('strong passwords are accepted by the blocklist', () => {
+		assert.strictEqual(isCommonPassword('correct-horse-42'), false);
+		assert.strictEqual(isCommonPassword('Tr0ub4dor&3-ish'), false);
+		assert.strictEqual(isCommonPassword('sN4k3-0il!quasar'), false);
+	});
+
+	await t.test('missing blocklist file fails closed at load time', () => {
+		assert.throws(() => loadCommonPasswordBlocklist('/nonexistent/blocklist.txt'), /FATAL/);
+	});
+
+	await t.test('degraded (truncated) blocklist file fails closed at load time', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'blocklist-'));
+		const file = join(dir, 'tiny.txt');
+		writeFileSync(file, 'password\n123456\nqwerty\n');
+		assert.throws(() => loadCommonPasswordBlocklist(file), /degraded/);
 	});
 });
 
@@ -141,6 +173,12 @@ test('REST password auth end to end', async (t) => {
 
 	await t.test('signup with a common password is rejected', async () => {
 		const { status, data } = await rest('POST', '/api/auth/signup', { ...creds, password: 'password123' });
+		assert.strictEqual(status, 400);
+		assert.ok(data.error.includes('too common'));
+	});
+
+	await t.test('signup with a blocklist-only password (beyond the old core set) is rejected', async () => {
+		const { status, data } = await rest('POST', '/api/auth/signup', { ...creds, password: 'harrypotter123' });
 		assert.strictEqual(status, 400);
 		assert.ok(data.error.includes('too common'));
 	});
