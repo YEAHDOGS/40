@@ -123,7 +123,11 @@ export class LoginAttemptTracker {
 
 	lockedRemainingMs(key) {
 		const rec = this.records.get(key);
-		if (!rec) return 0;
+		// No lock was ever imposed: the failure history must survive this
+		// read — the login path calls this check before EVERY attempt, so
+		// deleting here would reset the consecutive-failure count and the
+		// lockout would never trigger (regression-tested below).
+		if (!rec || rec.lockedUntil === 0) return 0;
 		const remaining = rec.lockedUntil - this.now();
 		if (remaining <= 0) {
 			this.records.delete(key);
