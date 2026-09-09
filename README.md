@@ -8,6 +8,22 @@ Everything deletes itself every forty days
 
 Our terms of service prevent exporting anything from the website anywhere externally, whether it be screenshots or word of mouth. Anonymity and privacy is imperative to us, but so is spam filtering and delivering a premium bot-free experience. We long for the days when Reddit could be trusted, when it wasn't a dead internet bot farm spamming Amazon affiliate links. 40Forty uses a strict balance of verification and anonymity to allow humans to be human again. Express honest opinion without fear of cancel culture, brands against honest product reviews, or censorship.
 
+# The Wipe
+
+The 40-day cycle is the product, not a background job. `WIPE_INTERVAL_DAYS = 40`
+in `src/server/wipe.js` is the single source of truth — the countdown, the API,
+and the scheduler all derive from it.
+
+- **What dies:** posts, replies, reposts, likes, media, hashtags, notifications.
+- **What lives:** users, follows, game scores (stat data), and the wipe history itself.
+- **It can't be skipped:** the `nextWipe` query lazy-wipes — ask for the countdown
+  and an overdue purge runs first. `scripts/wipe-check.js --execute` is the cron
+  backstop for production.
+- **It can't be triggered by a visitor:** `triggerWipe` requires auth, and the
+  Timer component no longer fires it from the browser.
+
+Full contract: [docs/wipe-architecture.md](docs/wipe-architecture.md).
+
 # Features
 
 - All content is blocked and hidden from non-users. This is a privacy-first social media
