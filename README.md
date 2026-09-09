@@ -66,6 +66,49 @@ This module is wired into both auth surfaces:
   the generated GraphQL schema on every regeneration so it can never leak
   through the API schema.
 
+# Security posture
+
+These invariants are enforced in code and covered by regression tests
+(`tests/graphql-content-auth.test.js`, `tests/graphql-validation.test.js`,
+`tests/graphql-wipe-admin.test.js`, `tests/validation.test.js`,
+`tests/api.test.js`). Any change that weakens one must update the tests and
+this section together.
+
+**Authentication & authorization**
+- The app is login-gated by design: **every data-returning query and content
+  read requires a valid token** — GraphQL `post`, `homeTimeline`,
+  `recommendedTimeline`, `trends` and REST `GET /posts`, `GET /posts/:id`,
+  `GET /users/:username` all return `UNAUTHORIZED`/`401` to anonymous
+  callers. `nextWipe` is the only public query (it returns a bare timestamp,
+  no user data).
+- All mutations except `signUp`/`login` require a token (`requireAuth`
+  wrapper in `src/server/resolvers.js`); authorship (`authorId`) always comes
+  from the token, never from client input.
+- `triggerWipe` purges all platform content, so it needs a token PLUS an
+  admin allowlist entry (`FORTY_ADMIN_IDS` / `FORTY_ADMIN_USERNAMES`) —
+  deny-by-default when neither is set.
+
+**Input validation** (`src/server/validation.js`, shared by GraphQL + REST)
+- Every public mutation validates input at the boundary: string type +
+  length caps (username 3–30, password 8–128, post content ≤2000, bio ≤500,
+  media ≤4 items / URL ≤2048, hashtags ≤10), email format check, and strict
+  enum allowlists (media type: `IMAGE`/`VIDEO`/`GIF`).
+- Prototype-pollution keys (`__proto__`, `constructor`, `prototype`) are
+  rejected recursively in any payload; validators take the RAW payload and
+  check it BEFORE destructuring so smuggled keys can't be silently dropped.
+- `updateProfile` never spreads caller input into Prisma — it uses an
+  allowlisted field set with length caps.
+- `ValidationError` maps to a 400 (REST) / GraphQL validation error, never a
+  500.
+
+**Secrets & hashes**
+- Passwords are scrypt-hashed (see "Password hashing" above); the plaintext
+  password is never logged (the REST signup debug log redacts it) and
+  `passwordHash` is stripped from every API response (`sanitizeUser`) and
+  from the generated GraphQL schema (`scripts/fix-graphql.js`).
+- Auth failures (unknown user, hashless legacy row, wrong password) all
+  return the same generic `Invalid credentials` — no user enumeration.
+
 # Features
 
 - All content is blocked and hidden from non-users. This is a privacy-first social media
