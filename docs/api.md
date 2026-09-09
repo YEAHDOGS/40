@@ -53,6 +53,8 @@ A token is obtained upon successful registration (`/auth/signup`) or login (`/au
   }
   ```
   `username`, `email`, `displayName`, and `password` are all required (400 otherwise).
+* **Rate limiting:** max 15 signups/minute per client IP (`FORTY_SIGNUP_IP_LIMIT`).
+  Over-limit callers get `429` — see "Common Error Statuses".
 * **Success Response:**
   * **Status:** `201 Created`
   * **Body:**
@@ -91,6 +93,13 @@ A token is obtained upon successful registration (`/auth/signup`) or login (`/au
     "password": "super-secret"
   }
   ```
+* **Rate limiting:** max 20 logins/minute per client IP and 5 logins/minute
+  per account (`FORTY_LOGIN_IP_LIMIT`, `FORTY_LOGIN_ACCOUNT_LIMIT`).
+  Over-limit callers get `429` — see "Common Error Statuses".
+* **Account lockout:** 5 consecutive failed logins lock the account for 15
+  minutes (`FORTY_LOCKOUT_MAX_FAILS`, `FORTY_LOCKOUT_MS`); a successful login
+  resets the count. A locked account gets `429` with a "temporarily locked"
+  message even with the right password.
 * **Success Response:**
   * **Status:** `200 OK`
   * **Body:** (Same structure as `/auth/signup` response)
@@ -283,4 +292,5 @@ A token is obtained upon successful registration (`/auth/signup`) or login (`/au
 | `401 Unauthorized` | Missing, invalid, or expired Bearer token. | `{"error": "Unauthorized. Valid token required."}` |
 | `403 Forbidden` | Trying to modify a resource that you do not own. | `{"error": "Forbidden. You do not own this post."}` |
 | `404 Not Found` | The requested resource (post or user) does not exist. | `{"error": "Post not found"}` |
+| `429 Too Many Requests` | Rate limit exceeded (auth endpoints) or account temporarily locked after too many failed logins. Includes a `Retry-After` response header (seconds). | `{"error": "Too many login attempts from this address", "retryAfterSeconds": 42}` |
 | `500 Internal Server Error` | Unexpected server-side exception. | `{"error": "Internal Server Error"}` |
