@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { getRedisClient } from './redis.js';
+import { printStartupBanner, printFatalBanner } from './startup-banner.js';
 
 const DEV_ONLY_SECRET = 'forty-dev-only-secret';
 
@@ -16,6 +17,9 @@ export function resolveJwtSecret(env = process.env) {
 	const secret = env.JWT_SECRET;
 	if (!secret) {
 		if (env.NODE_ENV === 'production') {
+			// Be loud on the way out: the FATAL banner names the exact
+			// missing env var so staging/prod crash-loops point at the fix.
+			printFatalBanner(env, 'JWT_SECRET');
 			throw new Error(
 				'[auth] FATAL: JWT_SECRET is not set. Refusing to start with NODE_ENV=production ' +
 				'— set JWT_SECRET to a real value (e.g. `openssl rand -base64 48`).'
@@ -24,6 +28,8 @@ export function resolveJwtSecret(env = process.env) {
 		console.warn('[auth] JWT_SECRET not set - using dev-only fallback. Set JWT_SECRET in production!');
 		return DEV_ONLY_SECRET;
 	}
+	// Boot checklist: loud confirmation of what the server resolved.
+	printStartupBanner(env);
 	return secret;
 }
 
