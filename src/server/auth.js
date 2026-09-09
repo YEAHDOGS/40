@@ -29,9 +29,36 @@ export function resolveJwtSecret(env = process.env) {
 		console.warn('[auth] JWT_SECRET not set - using dev-only fallback. Set JWT_SECRET in production!');
 		return DEV_ONLY_SECRET;
 	}
+	assertSecretStrength(env, secret);
 	// Boot checklist: loud confirmation of what the server resolved.
 	printStartupBanner(env);
 	return secret;
+}
+
+/**
+ * Startup auth self-check: a JWT_SECRET that is short or identical to the
+ * dev-only fallback is fail-closed in production — a 6-char secret would
+ * otherwise be brute-forceable and the fallback string is public knowledge.
+ * Outside production we stay zero-config but warn loudly so a weak local
+ * secret never hides.
+ */
+const MIN_SECRET_LENGTH = 32;
+
+function assertSecretStrength(env, secret) {
+	const weak = secret === DEV_ONLY_SECRET || secret.length < MIN_SECRET_LENGTH;
+	if (!weak) return;
+	if (env.NODE_ENV === 'production') {
+		printFatalBanner(env, 'JWT_SECRET');
+		throw new Error(
+			'[auth] FATAL: JWT_SECRET is too weak for NODE_ENV=production ' +
+			`(got ${secret.length} chars, need >= ${MIN_SECRET_LENGTH}). Refusing to start ` +
+			'— generate a real value with `openssl rand -base64 48`.'
+		);
+	}
+	console.warn(
+		`[auth] WARNING: JWT_SECRET is weak (${secret.length} chars) — fine for local dev, ` +
+		`never use it with NODE_ENV=production (needs >= ${MIN_SECRET_LENGTH} chars).`
+	);
 }
 
 const JWT_SECRET = resolveJwtSecret();
