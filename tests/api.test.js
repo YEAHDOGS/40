@@ -83,16 +83,92 @@ test('REST API Handler Unit Tests', async (t) => {
         assert.ok(data.error.includes('Username, email, and displayName are required'));
     });
 
-    await t.test('POST /api/auth/login - Validation of username', async () => {
+    await t.test('POST /api/auth/signup - Rejects missing password', async () => {
+        const req = createMockReq('POST', '/api/auth/signup', {}, {
+            username: 'no_password_user',
+            email: 'no_password@example.com',
+            displayName: 'No Password'
+        });
+        const res = createMockRes();
+
+        await restApiHandler(req, res, () => {});
+        const completedRes = await res.wait();
+
+        assert.strictEqual(completedRes.statusCode, 400);
+        const data = JSON.parse(completedRes.body);
+        assert.ok(data.error.includes('Password is required'));
+    });
+
+    await t.test('POST /api/auth/signup + login - scrypt round trip, hash never leaks', async () => {
+        const tag = Math.random().toString(36).substring(7);
+        const username = `auth_roundtrip_${tag}`;
+        const email = `auth_roundtrip_${tag}@example.com`;
+
+        // 1. Signup stores a hash, returns no passwordHash
+        const signupReq = createMockReq('POST', '/api/auth/signup', {}, {
+            username,
+            email,
+            displayName: 'Auth Roundtrip',
+            password: 'hunter2-hunter2'
+        });
+        const signupRes = createMockRes();
+        await restApiHandler(signupReq, signupRes, () => {});
+        const signupResult = await signupRes.wait();
+        assert.strictEqual(signupResult.statusCode, 201);
+        const signupData = JSON.parse(signupResult.body);
+        assert.ok(!('passwordHash' in signupData.user), 'passwordHash must not leak in signup response');
+
+        // 2. Wrong password -> 401, generic message
+        const badLoginReq = createMockReq('POST', '/api/auth/login', {}, {
+            username,
+            password: 'definitely-wrong'
+        });
+        const badLoginRes = createMockRes();
+        await restApiHandler(badLoginReq, badLoginRes, () => {});
+        const badLoginResult = await badLoginRes.wait();
+        assert.strictEqual(badLoginResult.statusCode, 401);
+        assert.ok(JSON.parse(badLoginResult.body).error.includes('Invalid credentials'));
+
+        // 3. Login without password -> 400
+        const noPassReq = createMockReq('POST', '/api/auth/login', {}, { username });
+        const noPassRes = createMockRes();
+        await restApiHandler(noPassReq, noPassRes, () => {});
+        const noPassResult = await noPassRes.wait();
+        assert.strictEqual(noPassResult.statusCode, 400);
+
+        // 4. Correct password -> 200 with token, no passwordHash
+        const goodLoginReq = createMockReq('POST', '/api/auth/login', {}, {
+            username,
+            password: 'hunter2-hunter2'
+        });
+        const goodLoginRes = createMockRes();
+        await restApiHandler(goodLoginReq, goodLoginRes, () => {});
+        const goodLoginResult = await goodLoginRes.wait();
+        assert.strictEqual(goodLoginResult.statusCode, 200);
+        const goodLoginData = JSON.parse(goodLoginResult.body);
+        assert.ok(goodLoginData.token.accessToken, 'login returns a token');
+        assert.ok(!('passwordHash' in goodLoginData.user), 'passwordHash must not leak in login response');
+    });
+
+    await t.test('POST /api/auth/login - Validation of username and password', async () => {
+        // No username at all -> username check fires first
         const req = createMockReq('POST', '/api/auth/login', {}, {});
         const res = createMockRes();
-        
+
         await restApiHandler(req, res, () => {});
         const completedRes = await res.wait();
 
         assert.strictEqual(completedRes.statusCode, 400);
         const data = JSON.parse(completedRes.body);
         assert.ok(data.error.includes('Username is required'));
+
+        // Username present, password missing -> password check fires
+        const req2 = createMockReq('POST', '/api/auth/login', {}, { username: 'nobody' });
+        const res2 = createMockRes();
+        await restApiHandler(req2, res2, () => {});
+        const completedRes2 = await res2.wait();
+        assert.strictEqual(completedRes2.statusCode, 400);
+        assert.ok(JSON.parse(completedRes2.body).error.includes('Password is required'));
     });
 
     await t.test('POST /api/posts - Authorization Guard blocks anonymous creation', async () => {
@@ -141,7 +217,8 @@ test('REST API Handler Unit Tests', async (t) => {
         const signupReq = createMockReq('POST', '/api/auth/signup', {}, {
             username: `unit_tester_${Math.random().toString(36).substring(7)}`,
             email: `unit_tester_${Math.random().toString(36).substring(7)}@example.com`,
-            displayName: 'Unit Tester'
+            displayName: 'Unit Tester',
+            password: 'test-password-123'
         });
         const signupRes = createMockRes();
         await restApiHandler(signupReq, signupRes, () => {});

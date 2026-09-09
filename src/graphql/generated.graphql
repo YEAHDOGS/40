@@ -98,3 +98,12 @@ type GameScore {
   user: User!
 }
 
+type WipeCycle {
+  id: String!
+  cycleNumber: Int!
+  startedAt: DateTime!
+  wipedAt: DateTime
+  purgedPosts: Int!
+  purgedMedia: Int!
+}
+

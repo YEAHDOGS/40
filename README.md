@@ -48,10 +48,15 @@ Rules of the road:
 - Comparison is constant-time (`timingSafeEqual`); `verifyPassword` always
   costs a full scrypt pass on well-formed input so correct and wrong passwords
   look alike to a stopwatch.
-- This module is staged for the REST auth fix: `POST /auth/signup` and
-  `POST /auth/login` currently issue tokens with no credential check. They need
-  a `passwordHash` column on the user model plus this module before that hole
-  closes.
+
+This module was staged for the REST auth fix — and the fix is now wired in:
+`POST /auth/signup` hashes with `hashPassword` and stores it in a new
+`passwordHash` column on the User model, and `POST /auth/login` requires
+the password and verifies it with `verifyPassword`. Hashless legacy rows
+fail closed (401), all failures return the same generic `Invalid credentials`,
+and the hash is stripped from every API response (`sanitizeUser`). Note the
+GraphQL `signUp`/`login` resolvers still don't check credentials — that's the
+next hole to close.
 
 # Features
 
