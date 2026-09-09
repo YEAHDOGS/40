@@ -5,6 +5,10 @@ generator client {
 generator graphql {
   provider = "prisma-generator-graphql-schema"
   output   = "../src/graphql/generated.graphql"
+  // WARNING: never regenerate with a bare `npx prisma generate` / `prisma db push`.
+  // The raw output re-introduces `passwordHash` into the schema and emits
+  // DateTime_NOT_SUPPORTED scalars. Always use `npm run generate`, which runs
+  // scripts/fix-graphql.js to strip the hash and fix the scalars afterwards.
 }
 
 datasource db {

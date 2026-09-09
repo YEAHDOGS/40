@@ -28,7 +28,7 @@ if (!process.env.DATABASE_URL) {
 	process.env.DATABASE_URL = `file:${dbFile}`;
 
 	try {
-		execFileSync('npx', ['prisma', 'db', 'push', '--accept-data-loss'], {
+		execFileSync('npx', ['prisma', 'db', 'push', '--accept-data-loss', '--skip-generate'], {
 			stdio: 'pipe',
 			timeout: 120000
 		});
