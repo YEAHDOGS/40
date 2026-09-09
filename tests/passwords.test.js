@@ -72,6 +72,10 @@ function createMockRes() {
 		statusCode: 200,
 		headers: {},
 		body: '',
+		setHeader(name, value) {
+			this.headers[name] = value;
+			return this;
+		},
 		writeHead(status, headers) {
 			this.statusCode = status;
 			Object.assign(this.headers, headers);

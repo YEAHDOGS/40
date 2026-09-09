@@ -10,6 +10,7 @@ import {
 	getClientIp,
 	normalizeAccount
 } from './rate-limit.js';
+import { buildSessionCookie, clearSessionCookie, readSessionCookie } from './cookies.js';
 
 // Helper to parse JSON request body
 const parseJsonBody = (req) => {
@@ -51,10 +52,15 @@ const sendJson = (res, data, status = 200) => {
 // Helper to authenticate request
 const getAuthUser = async (req) => {
     const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
+    let token = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+    } else {
+        // Cookie fallback: the login/logout endpoints set an HttpOnly
+        // session cookie for browser clients.
+        token = readSessionCookie(req.headers['cookie']);
     }
-    const token = authHeader.split(' ')[1];
+    if (!token) return null;
     const decoded = await verifyAuthToken(token);
     if (!decoded) {
         return null;
@@ -139,6 +145,7 @@ export async function restApiHandler(req, res, next) {
             const tokenString = await generateAuthToken(user);
             console.log('[REST] Token generated successfully');
             const { passwordHash: _dropped, ...safeUser } = user;
+            res.setHeader('Set-Cookie', buildSessionCookie(tokenString));
             return sendJson(res, {
                 token: {
                     accessToken: tokenString,
@@ -184,6 +191,9 @@ export async function restApiHandler(req, res, next) {
 
             const tokenString = await generateAuthToken(user);
             const { passwordHash: _dropped, ...safeUser } = user;
+            // HttpOnly session cookie alongside the Bearer JSON (Bearer
+            // stays for non-browser clients; the cookie is JS-invisible).
+            res.setHeader('Set-Cookie', buildSessionCookie(tokenString));
             return sendJson(res, {
                 token: {
                     accessToken: tokenString,
