@@ -21,6 +21,9 @@ model User {
   profileImage   String?
   bannerImage    String?
   verified       Boolean  @default(false)
+  // scrypt password hash (src/server/passwords.js). Never exposed over
+  // GraphQL — scripts/fix-graphql.js strips it from generated.graphql.
+  passwordHash   String?
   movies         String?
   books          String?
   music          String?

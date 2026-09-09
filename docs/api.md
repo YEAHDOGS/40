@@ -40,13 +40,15 @@ A token is obtained upon successful registration (`/auth/signup`) or login (`/au
 ### 2. Sign Up User
 * **Route:** `POST /auth/signup`
 * **Auth Required:** No
-* **Description:** Registers a new user. Passwords are mock-validated (accepted but not stored).
+* **Description:** Registers a new user. The password is required (min 8 characters),
+  hashed with scrypt, and never returned or queryable — the hash lives only in the database.
 * **Request Body:**
   ```json
   {
     "username": "coder_jane",
     "email": "jane@example.com",
-    "displayName": "Jane Developer"
+    "displayName": "Jane Developer",
+    "password": "correct-horse-42"
   }
   ```
 * **Success Response:**
@@ -76,11 +78,15 @@ A token is obtained upon successful registration (`/auth/signup`) or login (`/au
 ### 3. Login User
 * **Route:** `POST /auth/login`
 * **Auth Required:** No
-* **Description:** Logs in an existing user by their username. Passwords are mock-validated.
+* **Description:** Logs in an existing user. The password is verified against the stored
+  scrypt hash; wrong credentials always return the same `401 Invalid credentials`
+  (no username enumeration). Users created before password hashing was added
+  (no hash on record) cannot log in until a password is set.
 * **Request Body:**
   ```json
   {
-    "username": "coder_jane"
+    "username": "coder_jane",
+    "password": "correct-horse-42"
   }
   ```
 * **Success Response:**

@@ -7,6 +7,7 @@ type User {
   profileImage: String
   bannerImage: String
   verified: Boolean!
+
   movies: String
   books: String
   music: String
@@ -96,5 +97,14 @@ type GameScore {
   createdAt: DateTime!
   userId: String!
   user: User!
+}
+
+type WipeCycle {
+  id: String!
+  cycleNumber: Int!
+  startedAt: DateTime!
+  wipedAt: DateTime
+  purgedPosts: Int!
+  purgedMedia: Int!
 }
 

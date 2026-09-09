@@ -3,6 +3,7 @@ const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
 import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
+import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from './passwords.js';
 
 // Helper to parse JSON request body
 const parseJsonBody = (req) => {
@@ -97,10 +98,13 @@ export async function restApiHandler(req, res, next) {
         if (path === '/auth/signup' && method === 'POST') {
             console.log('[REST] Handling signup...');
             const body = await parseJsonBody(req);
-            console.log('[REST] Signup body parsed:', body);
-            const { username, email, displayName } = body;
+            console.log('[REST] Signup body parsed:', { ...body, password: body.password ? '[redacted]' : undefined });
+            const { username, email, displayName, password } = body;
             if (!username || !email || !displayName) {
                 return sendJson(res, { error: 'Username, email, and displayName are required' }, 400);
+            }
+            if (!password || password.length < MIN_PASSWORD_LENGTH) {
+                return sendJson(res, { error: `Password is required (min ${MIN_PASSWORD_LENGTH} characters)` }, 400);
             }
 
             console.log('[REST] Database check for existing user...');
@@ -113,11 +117,13 @@ export async function restApiHandler(req, res, next) {
             }
 
             console.log('[REST] Creating user in database...');
+            const passwordHash = await hashPassword(password);
             const user = await prisma.user.create({
                 data: {
                     username,
                     email,
                     displayName,
+                    passwordHash,
                     profileImage: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
                 }
             });
@@ -126,6 +132,7 @@ export async function restApiHandler(req, res, next) {
             console.log('[REST] Generating auth token...');
             const tokenString = await generateAuthToken(user);
             console.log('[REST] Token generated successfully');
+            const { passwordHash: _dropped, ...safeUser } = user;
             return sendJson(res, {
                 token: {
                     accessToken: tokenString,
@@ -133,24 +140,26 @@ export async function restApiHandler(req, res, next) {
                     expiresIn: 3456000,
                     tokenType: 'Bearer'
                 },
-                user
+                user: safeUser
             }, 201);
         }
 
         // 3. POST /auth/login
         if (path === '/auth/login' && method === 'POST') {
             const body = await parseJsonBody(req);
-            const { username } = body;
-            if (!username) {
-                return sendJson(res, { error: 'Username is required' }, 400);
+            const { username, password } = body;
+            if (!username || !password) {
+                return sendJson(res, { error: 'Username and password are required' }, 400);
             }
 
             const user = await prisma.user.findUnique({ where: { username } });
-            if (!user) {
-                return sendJson(res, { error: 'Invalid credentials. User not found.' }, 401);
+            // Uniform failure either way: no username enumeration.
+            if (!user || !(await verifyPassword(password, user.passwordHash))) {
+                return sendJson(res, { error: 'Invalid credentials' }, 401);
             }
 
             const tokenString = await generateAuthToken(user);
+            const { passwordHash: _dropped, ...safeUser } = user;
             return sendJson(res, {
                 token: {
                     accessToken: tokenString,
@@ -158,7 +167,7 @@ export async function restApiHandler(req, res, next) {
                     expiresIn: 3456000,
                     tokenType: 'Bearer'
                 },
-                user
+                user: safeUser
             });
         }
 
