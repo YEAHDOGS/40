@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { Readable } from 'stream';
-import { restApiHandler } from '../src/server/rest.js';
+import './setup-db.js';
+const { restApiHandler } = await import('../src/server/rest.js');
 
 // Helper to create mock request stream
 function createMockReq(method, url, headers = {}, body = null) {
