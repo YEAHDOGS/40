@@ -2,12 +2,14 @@ import pkg from '@prisma/client';
 import { DateTimeResolver, JSONResolver } from 'graphql-scalars';
 import { GraphQLError } from 'graphql';
 import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
+import {
+	WIPE_INTERVAL_DAYS,
+	getNextWipe,
+	triggerWipeNow
+} from './wipe.js';
 
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
-
-let globalNextWipe = new Date();
-globalNextWipe.setDate(globalNextWipe.getDate() + 15);
 
 const mapCountPropToRelation = (modelName, prop) => {
 	if (modelName === 'user') {
@@ -163,15 +165,34 @@ export const resolvers = {
 		trends: async (_, { limit = 5 }) => {
 			const trendingTags = await prisma.hashtag.findMany({
 				take: limit,
-				orderBy: { posts: { _count: 'desc' } }
+				orderBy: { posts: { _count: 'desc' } },
+				include: { _count: { select: { posts: true } } }
 			});
-			return trendingTags.map((hashtag, index) => ({
-				hashtag,
-				usageCount: Math.floor(Math.random() * 10000) + 500,
-				rank: index + 1
+			// Momentum: share of this tag's posts created in the most recent
+			// quarter of the wipe cycle. Real signal, no invented numbers.
+			const recentCutoff = new Date(Date.now() - (WIPE_INTERVAL_DAYS * 24 * 60 * 60 * 1000) / 4);
+			return Promise.all(trendingTags.map(async (hashtag, index) => {
+				const recent = await prisma.postHashtag.count({
+					where: {
+						hashtagId: hashtag.id,
+						post: { createdAt: { gte: recentCutoff } }
+					}
+				});
+				const total = hashtag._count.posts;
+				const ratio = total > 0 ? recent / total : 0;
+				return {
+					id: hashtag.id,
+					hashtag,
+					rank: index + 1,
+					volume: total,
+					momentum: ratio >= 0.5 ? 'rising' : ratio >= 0.25 ? 'steady' : 'cooling'
+				};
 			}));
 		},
-		nextWipe: async () => globalNextWipe
+		nextWipe: async () => {
+			const { nextWipe } = await getNextWipe(prisma);
+			return nextWipe;
+		}
 	},
 
 	Mutation: {
@@ -269,20 +290,10 @@ export const resolvers = {
 			});
 		},
 		triggerWipe: async () => {
-			await prisma.like.deleteMany();
-			await prisma.bookmark.deleteMany();
-			await prisma.follow.deleteMany();
-			await prisma.postHashtag.deleteMany();
-			await prisma.hashtag.deleteMany();
-			await prisma.media.deleteMany();
-			await prisma.notification.deleteMany();
-			await prisma.gameScore.deleteMany();
-			await prisma.post.deleteMany();
-
-			console.log("Global Wipe Triggered");
-
-			globalNextWipe = new Date();
-			globalNextWipe.setDate(globalNextWipe.getDate() + 15);
+			// Manual wipe. Auth + admin gating happens in the requireAuth
+			// wrapper below; the 40-day clock restarts from now.
+			const { purged } = await triggerWipeNow(prisma);
+			console.log(`[wipe] manual trigger — purged ${purged.posts} posts, ${purged.media} media`);
 			return true;
 		}
 	}
@@ -300,7 +311,9 @@ const requireAuth = (resolver) => {
 };
 
 for (const [name, resolver] of Object.entries(resolvers.Mutation)) {
-	if (name !== 'signUp' && name !== 'login' && name !== 'triggerWipe') {
+	// signUp/login are public by design. EVERYTHING else — including
+	// triggerWipe, which used to be callable by anyone — requires a token.
+	if (name !== 'signUp' && name !== 'login') {
 		resolvers.Mutation[name] = requireAuth(resolver);
 	}
 }

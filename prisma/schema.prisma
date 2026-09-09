@@ -126,3 +126,14 @@ model GameScore {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
 }
+
+// One row per 40-day epoch. The wipe history is stat data, so it survives
+// the wipe — it's how the countdown stays honest across server restarts.
+model WipeCycle {
+  id          String    @id @default(uuid())
+  cycleNumber Int       @unique
+  startedAt   DateTime  @default(now())
+  wipedAt     DateTime?
+  purgedPosts Int       @default(0)
+  purgedMedia Int       @default(0)
+}
