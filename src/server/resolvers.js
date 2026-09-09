@@ -24,6 +24,7 @@ import {
 	rateLimitedGraphQLError,
 	accountLockedGraphQLError
 } from './rate-limit.js';
+import { auditAuthzDenied } from './audit.js';
 
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
@@ -426,9 +427,18 @@ export const resolvers = {
 	}
 };
 
-const requireAuth = (resolver) => {
+const requireAuth = (name, resolver) => {
 	return async (parent, args, context, info) => {
 		if (!context.userId) {
+			// Audit: silent authz denials used to leave no trace — an
+			// attacker token-guessing gated endpoints was invisible.
+			auditAuthzDenied({
+				surface: 'graphql',
+				operation: name,
+				code: 'UNAUTHORIZED',
+				userId: null,
+				clientIp: context?.clientIp ?? null
+			});
 			throw new GraphQLError("Unauthorized. Please provide a valid token.", {
 				extensions: { code: 'UNAUTHORIZED' }
 			});
@@ -457,9 +467,16 @@ const ADMIN_USERNAMES = new Set(
 	(process.env.FORTY_ADMIN_USERNAMES || '').split(',').map((s) => s.trim()).filter(Boolean)
 );
 
-const requireAdmin = (resolver) => {
+const requireAdmin = (name, resolver) => {
 	return async (parent, args, context, info) => {
 		if (!context.userId) {
+			auditAuthzDenied({
+				surface: 'graphql',
+				operation: name,
+				code: 'UNAUTHORIZED',
+				userId: null,
+				clientIp: context?.clientIp ?? null
+			});
 			throw new GraphQLError("Unauthorized. Please provide a valid token.", {
 				extensions: { code: 'UNAUTHORIZED' }
 			});
@@ -473,6 +490,15 @@ const requireAdmin = (resolver) => {
 			isAdmin = !!user && ADMIN_USERNAMES.has(user.username);
 		}
 		if (!isAdmin) {
+			// Audit: admin-endpoint pokes are the loudest signal of a
+			// compromised account probing for privilege escalation.
+			auditAuthzDenied({
+				surface: 'graphql',
+				operation: name,
+				code: 'FORBIDDEN',
+				userId: context.userId,
+				clientIp: context?.clientIp ?? null
+			});
 			throw new GraphQLError("Forbidden. Admin access required.", {
 				extensions: { code: 'FORBIDDEN' }
 			});
@@ -486,12 +512,12 @@ for (const [name, resolver] of Object.entries(resolvers.Mutation)) {
 	// EXCEPT triggerWipe, which purges all platform content and needs an
 	// admin allowlist entry on top of a token (requireAdmin).
 	if (name === 'signUp' || name === 'login') continue;
-	resolvers.Mutation[name] = name === 'triggerWipe' ? requireAdmin(resolver) : requireAuth(resolver);
+	resolvers.Mutation[name] = name === 'triggerWipe' ? requireAdmin(name, resolver) : requireAuth(name, resolver);
 }
 
 // Read-side gating: content queries require a token. nextWipe stays public
 // (timestamp only, no user data — see the invariant above).
 for (const [name, resolver] of Object.entries(resolvers.Query)) {
 	if (name === 'nextWipe') continue;
-	resolvers.Query[name] = requireAuth(resolver);
+	resolvers.Query[name] = requireAuth(name, resolver);
 }

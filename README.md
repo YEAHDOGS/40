@@ -72,7 +72,7 @@ These invariants are enforced in code and covered by regression tests
 (`tests/graphql-content-auth.test.js`, `tests/graphql-validation.test.js`,
 `tests/graphql-wipe-admin.test.js`, `tests/validation.test.js`,
 `tests/api.test.js`, `tests/rate-limit.test.js`, `tests/auth-guard.test.js`,
-`tests/client-ip.test.js`).
+`tests/client-ip.test.js`, `tests/audit.test.js`).
 Any change that weakens one must update the tests and
 this section together.
 
@@ -89,6 +89,14 @@ this section together.
 - `triggerWipe` purges all platform content, so it needs a token PLUS an
   admin allowlist entry (`FORTY_ADMIN_IDS` / `FORTY_ADMIN_USERNAMES`) —
   deny-by-default when neither is set.
+- Every authz denial is audit-logged (`src/server/audit.js`): each
+  `UNAUTHORIZED` / `FORBIDDEN` on the GraphQL and REST surfaces emits one
+  JSON line (`{"audit": true, "event": "authz.denied", ...}`) with the
+  operation name, surface, caller `userId`, resolved client IP, and timestamp
+  — token-guessing, admin-endpoint poking, and cross-user writes now leave a
+  parseable trail. Tokens are never logged (no `token` field exists) and the
+  emit is best-effort so a logging failure can never turn a clean denial
+  into a 500.
 
 **Input validation** (`src/server/validation.js`, shared by GraphQL + REST)
 - Every public mutation validates input at the boundary: string type +
