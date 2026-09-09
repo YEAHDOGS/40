@@ -49,14 +49,21 @@ Rules of the road:
   costs a full scrypt pass on well-formed input so correct and wrong passwords
   look alike to a stopwatch.
 
-This module was staged for the REST auth fix — and the fix is now wired in:
-`POST /auth/signup` hashes with `hashPassword` and stores it in a new
-`passwordHash` column on the User model, and `POST /auth/login` requires
-the password and verifies it with `verifyPassword`. Hashless legacy rows
-fail closed (401), all failures return the same generic `Invalid credentials`,
-and the hash is stripped from every API response (`sanitizeUser`). Note the
-GraphQL `signUp`/`login` resolvers still don't check credentials — that's the
-next hole to close.
+This module is wired into both auth surfaces:
+
+- **REST:** `POST /auth/signup` hashes with `hashPassword` and stores it in a
+  new `passwordHash` column on the User model; `POST /auth/login` requires
+  the password and verifies it with `verifyPassword`. Hashless legacy rows
+  fail closed (401), all failures return the same generic `Invalid credentials`,
+  and the hash is stripped from every API response (`sanitizeUser`).
+- **GraphQL:** the `signUp`/`login` resolvers do the same — signup hashes the
+  password (blank passwords rejected, duplicate username/email gets a clean
+  error instead of a Prisma 500), login verifies with `verifyPassword` and
+  fails closed on unknown users, hashless legacy rows, and wrong passwords
+  with the same generic `Invalid credentials`. The `passwordHash` is also
+  stripped from resolver returns, and `scripts/fix-graphql.js` strips it from
+  the generated GraphQL schema on every regeneration so it can never leak
+  through the API schema.
 
 # Features
 
