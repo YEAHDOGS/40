@@ -4,6 +4,12 @@ const prisma = new PrismaClient();
 
 import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
 import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from './passwords.js';
+import {
+	loginRateLimiter,
+	loginAttemptLog,
+	getClientIp,
+	normalizeAccount
+} from './rate-limit.js';
 
 // Helper to parse JSON request body
 const parseJsonBody = (req) => {
@@ -152,11 +158,29 @@ export async function restApiHandler(req, res, next) {
                 return sendJson(res, { error: 'Username and password are required' }, 400);
             }
 
+            // Rate-limit BEFORE touching the DB or burning scrypt cycles:
+            // a locked-out client never gets to do expensive work.
+            const clientIp = getClientIp(req);
+            const account = normalizeAccount(username);
+            const gate = loginRateLimiter.check(clientIp, username);
+            if (!gate.ok) {
+                loginAttemptLog.record({ ip: clientIp, account, ok: false });
+                res.setHeader('Retry-After', String(Math.ceil(gate.retryAfterMs / 1000)));
+                return sendJson(res, { error: 'Too many login attempts. Please try again later.' }, 429);
+            }
+
             const user = await prisma.user.findUnique({ where: { username } });
             // Uniform failure either way: no username enumeration.
             if (!user || !(await verifyPassword(password, user.passwordHash))) {
+                loginRateLimiter.recordFailure(clientIp, username);
+                loginAttemptLog.record({ ip: clientIp, account, ok: false });
                 return sendJson(res, { error: 'Invalid credentials' }, 401);
             }
+
+            // Success clears the account's failure streak (typo-then-correct
+            // must not keep a legit user locked out); IP failures stand.
+            loginRateLimiter.recordSuccess(clientIp, username);
+            loginAttemptLog.record({ ip: clientIp, account, ok: true });
 
             const tokenString = await generateAuthToken(user);
             const { passwordHash: _dropped, ...safeUser } = user;

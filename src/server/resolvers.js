@@ -4,6 +4,11 @@ import { GraphQLError } from 'graphql';
 import { generateAuthToken, verifyAuthToken, revokeAuthToken } from './auth.js';
 import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from './passwords.js';
 import {
+	loginRateLimiter,
+	loginAttemptLog,
+	normalizeAccount
+} from './rate-limit.js';
+import {
 	WIPE_INTERVAL_DAYS,
 	getNextWipe,
 	triggerWipeNow
@@ -227,13 +232,26 @@ export const resolvers = {
 			};
 			return { token, user: withoutPasswordHash(user) };
 		},
-		login: async (_, { username, password }) => {
+		login: async (_, { username, password }, context) => {
+			const clientIp = context?.clientIp || 'unknown';
+			const account = normalizeAccount(username);
+			const gate = loginRateLimiter.check(clientIp, username);
+			if (!gate.ok) {
+				loginAttemptLog.record({ ip: clientIp, account, ok: false });
+				throw new GraphQLError('Too many login attempts. Please try again later.', {
+					extensions: { code: 'RATE_LIMITED', http: { status: 429 } }
+				});
+			}
 			const user = await prisma.user.findUnique({ where: { username } });
 			// Uniform failure either way: no username enumeration, no hint
 			// about whether the password was the wrong part.
 			if (!user || !(await verifyPassword(password, user.passwordHash))) {
+				loginRateLimiter.recordFailure(clientIp, username);
+				loginAttemptLog.record({ ip: clientIp, account, ok: false });
 				throw new Error("Invalid credentials");
 			}
+			loginRateLimiter.recordSuccess(clientIp, username);
+			loginAttemptLog.record({ ip: clientIp, account, ok: true });
 			const tokenString = await generateAuthToken(user);
 			const token = {
 				accessToken: tokenString,
