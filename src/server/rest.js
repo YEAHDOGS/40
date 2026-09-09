@@ -29,6 +29,7 @@ const CORS_HEADERS = {
 };
 
 import { resolveClientIp } from './client-ip.js';
+import { auditAuthzDenied } from './audit.js';
 
 // Client IP for rate limiting, resolved by the shared helper in
 // src/server/client-ip.js. Proxy headers (X-Forwarded-For) are honored only
@@ -36,6 +37,18 @@ import { resolveClientIp } from './client-ip.js';
 // default lets an attacker rotate identities and dodge the per-IP budgets.
 const getClientIp = (req) =>
 	resolveClientIp(req.headers, { socketAddress: req.socket?.remoteAddress });
+
+// Audit helper: every 401/403 below leaves a parseable trail (see
+// src/server/audit.js). Operation names use the route template so a
+// "/posts/abc123" denial aggregates under "PUT /posts/:id".
+const auditDenied = (req, operation, code, userId = null) =>
+	auditAuthzDenied({
+		surface: 'rest',
+		operation,
+		code,
+		userId,
+		clientIp: getClientIp(req)
+	});
 
 // 429 with a machine-readable Retry-After. Shape: { error, retryAfterSeconds }.
 const sendRateLimited = (res, retryAfterMs, message) => {
@@ -257,6 +270,7 @@ export async function restApiHandler(req, res, next) {
         if (path === '/auth/logout' && method === 'POST') {
             const auth = await getAuthUser(req);
             if (!auth) {
+                auditDenied(req, 'POST /auth/logout', 'UNAUTHORIZED');
                 return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
             }
             await revokeAuthToken(auth.token);
@@ -268,6 +282,7 @@ export async function restApiHandler(req, res, next) {
         if (path === '/posts' && method === 'GET') {
             const auth = await getAuthUser(req);
             if (!auth) {
+                auditDenied(req, 'GET /posts', 'UNAUTHORIZED');
                 return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
             }
             // Pagination params are forgiving: garbage falls back to defaults.
@@ -302,6 +317,7 @@ export async function restApiHandler(req, res, next) {
         if (path === '/posts' && method === 'POST') {
             const auth = await getAuthUser(req);
             if (!auth) {
+                auditDenied(req, 'POST /posts', 'UNAUTHORIZED');
                 return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
             }
 
@@ -360,6 +376,7 @@ export async function restApiHandler(req, res, next) {
         if (postMatch && method === 'GET') {
             const auth = await getAuthUser(req);
             if (!auth) {
+                auditDenied(req, 'GET /posts/:id', 'UNAUTHORIZED');
                 return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
             }
             const postId = postMatch[1];
@@ -385,6 +402,7 @@ export async function restApiHandler(req, res, next) {
         if (postMatch && method === 'PUT') {
             const auth = await getAuthUser(req);
             if (!auth) {
+                auditDenied(req, 'PUT /posts/:id', 'UNAUTHORIZED');
                 return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
             }
 
@@ -395,6 +413,7 @@ export async function restApiHandler(req, res, next) {
             }
 
             if (post.authorId !== auth.user.id) {
+                auditDenied(req, 'PUT /posts/:id', 'FORBIDDEN', auth.user.id);
                 return sendJson(res, { error: 'Forbidden. You do not own this post.' }, 403);
             }
 
@@ -422,6 +441,7 @@ export async function restApiHandler(req, res, next) {
         if (postMatch && method === 'DELETE') {
             const auth = await getAuthUser(req);
             if (!auth) {
+                auditDenied(req, 'DELETE /posts/:id', 'UNAUTHORIZED');
                 return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
             }
 
@@ -432,6 +452,7 @@ export async function restApiHandler(req, res, next) {
             }
 
             if (post.authorId !== auth.user.id) {
+                auditDenied(req, 'DELETE /posts/:id', 'FORBIDDEN', auth.user.id);
                 return sendJson(res, { error: 'Forbidden. You do not own this post.' }, 403);
             }
 
@@ -461,6 +482,7 @@ export async function restApiHandler(req, res, next) {
         if (userMatch && method === 'GET') {
             const auth = await getAuthUser(req);
             if (!auth) {
+                auditDenied(req, 'GET /users/:username', 'UNAUTHORIZED');
                 return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
             }
             const username = userMatch[1];
@@ -497,6 +519,7 @@ export async function restApiHandler(req, res, next) {
         if (path === '/users/profile' && method === 'PUT') {
             const auth = await getAuthUser(req);
             if (!auth) {
+                auditDenied(req, 'PUT /users/profile', 'UNAUTHORIZED');
                 return sendJson(res, { error: 'Unauthorized. Valid token required.' }, 401);
             }
 
