@@ -7,3 +7,9 @@
 #
 # `triggerWipe` is the manual, auth-required escape hatch. It is NOT how the
 # scheduled wipe happens — the countdown query drives that.
+
+# Placeholder keeps this file a valid GraphQL document: graphql-js rejects
+# files with zero definitions, which breaks the vite build (src/server/yoga.js
+# merges every *.graphql file at startup). The wipe queries themselves live in
+# query.graphql / mutation.graphql; add future wipe-cycle types here.
+scalar WipeTimestamp
