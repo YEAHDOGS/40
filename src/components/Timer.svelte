@@ -3,6 +3,7 @@
 	import { Timer as TimerIcon, Settings as SettingsIcon, X } from "lucide-svelte";
 	import { queryStore, gql } from "@urql/svelte";
 	import { presets, communityThemes } from "../lib/clockPresets.js";
+	import { formatCountdownAnnouncement, announcementKey } from "../lib/timerA11y.js";
 
 	const NextWipeQuery = gql`
 		query GetNextWipe {
@@ -21,8 +22,38 @@
 	let timeLeft = $state({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 	let frame = 0;
 
-	// Customizer State
+	// Screen-reader announcement: minute-resolution text so the live region
+	// speaks at most once per minute even though the timer ticks every frame.
+	let announcementText = $state("Time to global wipe countdown is loading");
+	let lastAnnounceKey = $state("");
+
+	$effect(() => {
+		const key = announcementKey(timeLeft);
+		if (key !== lastAnnounceKey) {
+			lastAnnounceKey = key;
+			announcementText = formatCountdownAnnouncement(timeLeft);
+		}
+	});
+
+	// Customizer drawer: keyboard operability + focus management
 	let showPanel = $state(false);
+	let toggleBtn = $state(null);
+	let presetSelect = $state(null);
+	let panelWasOpen = $state(false);
+
+	$effect(() => {
+		if (showPanel && !panelWasOpen) presetSelect?.focus();
+		else if (!showPanel && panelWasOpen) toggleBtn?.focus();
+		panelWasOpen = showPanel;
+	});
+
+	function handleKeydown(event) {
+		if (event.key === "Escape" && showPanel) {
+			showPanel = false;
+		}
+	}
+
+	// Customizer State
 	let selectedThemeId = $state("vintage");
 	let colorBg = $state("#1c1c1c");
 	let colorTile = $state("#e4e4e4");
@@ -133,6 +164,8 @@
 	`);
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 <div class="timer-wrapper" style={dynamicStyles}>
 	<!-- Dynamic CSS Injection (strictly scoped inside the wrapper) -->
 	{#if customCss}
@@ -153,15 +186,24 @@
 		</div>
 		
 		<!-- Customize Gear Icon Button -->
-		<button onclick={togglePanel} class="customizer-toggle-btn" title="Customize Design">
+		<button
+			bind:this={toggleBtn}
+			onclick={togglePanel}
+			class="customizer-toggle-btn"
+			aria-label="Customize clock design"
+			aria-expanded={showPanel}
+			aria-controls="timer-style-panel"
+		>
 			<SettingsIcon size={14} />
 		</button>
 	</div>
 
 	<!-- Flip Clock Containers -->
-	<div class="flip-clock-container">
+	<!-- Screen readers get the minute-resolution live region below; the
+	     per-second digits are visual-only to avoid announcement spam. -->
+	<div class="flip-clock-container" role="timer" aria-label="Time to global wipe">
 		<!-- Days -->
-		<div class="flip-tile-col" class:days-wide={timeLeft.days > 99}>
+		<div class="flip-tile-col" class:days-wide={timeLeft.days > 99} aria-hidden="true">
 			<div class="flip-card">
 				<span class="flip-digit">{timeLeft.days.toString().padStart(2, "0")}</span>
 			</div>
@@ -171,7 +213,7 @@
 		<span class="flip-colon">:</span>
 
 		<!-- Hours -->
-		<div class="flip-tile-col">
+		<div class="flip-tile-col" aria-hidden="true">
 			<div class="flip-card">
 				<span class="flip-digit">{timeLeft.hours.toString().padStart(2, "0")}</span>
 			</div>
@@ -181,7 +223,7 @@
 		<span class="flip-colon">:</span>
 
 		<!-- Minutes -->
-		<div class="flip-tile-col">
+		<div class="flip-tile-col" aria-hidden="true">
 			<div class="flip-card">
 				<span class="flip-digit">{timeLeft.minutes.toString().padStart(2, "0")}</span>
 			</div>
@@ -191,7 +233,7 @@
 		<span class="flip-colon">:</span>
 
 		<!-- Seconds -->
-		<div class="flip-tile-col">
+		<div class="flip-tile-col" aria-hidden="true">
 			<div class="flip-card">
 				<span class="flip-digit">{timeLeft.seconds.toString().padStart(2, "0")}</span>
 			</div>
@@ -199,20 +241,23 @@
 		</div>
 	</div>
 
+	<!-- Screen-reader-only countdown announcement, updated at most once per minute -->
+	<p class="sr-only" role="status" aria-atomic="true">{announcementText}</p>
+
 	<!-- Customizer Drawer Panel -->
 	{#if showPanel}
-		<div class="customizer-drawer">
+		<div class="customizer-drawer" id="timer-style-panel" role="dialog" aria-label="Clock style editor">
 			<div class="drawer-header">
 				<span>Style Protocol Editor</span>
-				<button onclick={togglePanel} class="drawer-close-btn">
+				<button onclick={togglePanel} class="drawer-close-btn" aria-label="Close style editor">
 					<X size={14} />
 				</button>
 			</div>
 
 			<!-- Preset Dropdown -->
 			<div class="drawer-group">
-				<label class="drawer-label-heading">Theme Preset</label>
-				<select bind:value={selectedThemeId} onchange={applyPreset} class="drawer-select">
+				<label class="drawer-label-heading" for="timer-preset-select">Theme Preset</label>
+				<select bind:this={presetSelect} id="timer-preset-select" bind:value={selectedThemeId} onchange={applyPreset} class="drawer-select">
 					<optgroup label="Built-in">
 						{#each presets as preset}
 							<option value={preset.id}>{preset.name}</option>
@@ -228,31 +273,32 @@
 
 			<!-- Quick Color Pickers -->
 			<div class="drawer-group">
-				<label class="drawer-label-heading">Color Variables</label>
+				<span class="drawer-label-heading" aria-hidden="true">Color Variables</span>
 				<div class="picker-grid">
 					<div class="picker-item">
 						<span>Bg</span>
-						<input type="color" bind:value={colorBg} oninput={saveTheme} />
+						<input type="color" bind:value={colorBg} oninput={saveTheme} aria-label="Background color" />
 					</div>
 					<div class="picker-item">
 						<span>Tile</span>
-						<input type="color" bind:value={colorTile} oninput={saveTheme} />
+						<input type="color" bind:value={colorTile} oninput={saveTheme} aria-label="Tile color" />
 					</div>
 					<div class="picker-item">
 						<span>Digits</span>
-						<input type="color" bind:value={colorDigit} oninput={saveTheme} />
+						<input type="color" bind:value={colorDigit} oninput={saveTheme} aria-label="Digit color" />
 					</div>
 					<div class="picker-item">
 						<span>Labels</span>
-						<input type="color" bind:value={colorLabel} oninput={saveTheme} />
+						<input type="color" bind:value={colorLabel} oninput={saveTheme} aria-label="Label color" />
 					</div>
 				</div>
 			</div>
 
 			<!-- Direct CSS Overrides Textarea -->
 			<div class="drawer-group">
-				<label class="drawer-label-heading">Custom CSS (Scoped Overrides)</label>
+				<label class="drawer-label-heading" for="timer-custom-css">Custom CSS (Scoped Overrides)</label>
 				<textarea
+					id="timer-custom-css"
 					bind:value={customCss}
 					oninput={saveTheme}
 					placeholder={"/* Write direct CSS rules here */\n.flip-card { border: 1px solid cyan; }"}
@@ -262,7 +308,7 @@
 
 			<!-- Community Gallery List -->
 			<div class="drawer-group">
-				<label class="drawer-label-heading">Browse Uploads Gallery</label>
+				<span class="drawer-label-heading" aria-hidden="true">Browse Uploads Gallery</span>
 				<div class="gallery-row">
 					{#each communityThemes as theme}
 						<button
@@ -597,6 +643,37 @@
 			background: rgba(255, 102, 0, 0.1);
 			border-color: var(--label-color, #ff6600);
 			color: white;
+		}
+	}
+	/* Accessibility: screen-reader-only live region */
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	/* Accessibility: visible keyboard focus on all timer controls */
+	.customizer-toggle-btn:focus-visible,
+	.drawer-close-btn:focus-visible,
+	.gallery-theme-tag:focus-visible {
+		outline: 2px solid var(--label-color, #ff6600);
+		outline-offset: 2px;
+	}
+
+	/* Accessibility: honor reduced-motion preference — kill the flip
+	   flourishes (colon pulse, drawer slide-in, hover transitions) so the
+	   timer reads as a calm static countdown. */
+	@media (prefers-reduced-motion: reduce) {
+		.timer-wrapper,
+		.timer-wrapper * {
+			animation: none !important;
+			transition: none !important;
 		}
 	}
 </style>
