@@ -19,8 +19,9 @@ and the scheduler all derive from it.
 - **It can't be skipped:** the `nextWipe` query lazy-wipes — ask for the countdown
   and an overdue purge runs first. `scripts/wipe-check.js --execute` is the cron
   backstop for production.
-- **It can't be triggered by a visitor:** `triggerWipe` requires auth, and the
-  Timer component no longer fires it from the browser.
+- **It can't be triggered by a visitor:** `triggerWipe` requires auth PLUS an
+  admin allowlist entry (`FORTY_ADMIN_IDS` / `FORTY_ADMIN_USERNAMES` — deny by
+  default), and the Timer component no longer fires it from the browser.
 
 Full contract: [docs/wipe-architecture.md](docs/wipe-architecture.md).
 
