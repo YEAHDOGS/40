@@ -71,7 +71,8 @@ This module is wired into both auth surfaces:
 These invariants are enforced in code and covered by regression tests
 (`tests/graphql-content-auth.test.js`, `tests/graphql-validation.test.js`,
 `tests/graphql-wipe-admin.test.js`, `tests/validation.test.js`,
-`tests/api.test.js`). Any change that weakens one must update the tests and
+`tests/api.test.js`, `tests/rate-limit.test.js`, `tests/auth-guard.test.js`).
+Any change that weakens one must update the tests and
 this section together.
 
 **Authentication & authorization**
@@ -108,6 +109,23 @@ this section together.
   from the generated GraphQL schema (`scripts/fix-graphql.js`).
 - Auth failures (unknown user, hashless legacy row, wrong password) all
   return the same generic `Invalid credentials` — no user enumeration.
+
+**Brute-force hardening** (`src/server/rate-limit.js`, shared by GraphQL + REST)
+- Sliding-window rate limits on the public auth endpoints: login is capped
+  per client IP (20/min) and per account (5/min); signup is capped per IP
+  (15/min). Over-limit callers get `429` with a `Retry-After` header and a
+  `{ error, retryAfterSeconds }` body (GraphQL: `RATE_LIMITED` extension
+  code) instead of reaching the credential check.
+- Account lockout: 5 consecutive failed logins for a real account lock it
+  for 15 minutes (`ACCOUNT_LOCKED` / `429 "temporarily locked"`). A success
+  resets the count and stale failures stop counting, so normal users are
+  never locked; failures for unknown usernames are not recorded (recording
+  them would let an attacker pre-lock an account before its owner registers).
+- All limits are tunable via `FORTY_*` env vars (`FORTY_LOGIN_IP_LIMIT`,
+  `FORTY_LOGIN_ACCOUNT_LIMIT`, `FORTY_SIGNUP_IP_LIMIT`,
+  `FORTY_LOCKOUT_MAX_FAILS`, `FORTY_LOCKOUT_MS`, plus `..._WINDOW_MS`
+  variants); garbage values fall back to the safe defaults. State is
+  in-memory and memory-bounded (expired buckets are swept).
 
 # Features
 
