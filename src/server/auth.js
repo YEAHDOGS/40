@@ -1,7 +1,10 @@
 import jwt from 'jsonwebtoken';
 import { getRedisClient } from './redis.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'forty-forty-ultra-secret-key-4040';
+const JWT_SECRET = process.env.JWT_SECRET || 'forty-dev-only-secret';
+if (!process.env.JWT_SECRET) {
+	console.warn("[auth] JWT_SECRET not set - using dev-only fallback. Set JWT_SECRET in production!");
+}
 const TOKEN_EXPIRY = '40d'; // 40 days
 
 /**
