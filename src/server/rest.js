@@ -13,6 +13,41 @@ import {
     assertInt,
     LIMITS
 } from './validation.js';
+import {
+    loginIpLimiter,
+    loginAccountLimiter,
+    signupIpLimiter,
+    loginTracker,
+    retryAfterSeconds,
+} from './rate-limit.js';
+
+// CORS headers shared by every response helper below.
+const CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+};
+
+// Client IP for rate limiting: honor X-Forwarded-For when behind a proxy,
+// fall back to the socket address. Test mocks have neither → 'unknown'.
+const getClientIp = (req) => {
+    const fwd = req.headers?.['x-forwarded-for'];
+    if (typeof fwd === 'string' && fwd.trim()) return fwd.split(',')[0].trim();
+    const remote = req.socket?.remoteAddress;
+    return typeof remote === 'string' && remote ? remote : 'unknown';
+};
+
+// 429 with a machine-readable Retry-After. Shape: { error, retryAfterSeconds }.
+const sendRateLimited = (res, retryAfterMs, message) => {
+    const secs = retryAfterSeconds(retryAfterMs);
+    console.log(`[REST] Rate limited (${secs}s): ${message || 'Too many requests'}`);
+    res.writeHead(429, {
+        'Content-Type': 'application/json',
+        'Retry-After': String(secs),
+        ...CORS_HEADERS
+    });
+    res.end(JSON.stringify({ error: message || 'Too many requests', retryAfterSeconds: secs }));
+};
 
 // Never leak the scrypt hash over the API. Every response that carries a
 // user record goes through this before sendJson.
@@ -52,9 +87,7 @@ const sendJson = (res, data, status = 200) => {
     console.log(`[REST] Sending response with status ${status}`);
     res.writeHead(status, {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+        ...CORS_HEADERS
     });
     res.end(JSON.stringify(data));
 };
@@ -114,6 +147,13 @@ export async function restApiHandler(req, res, next) {
         // 2. POST /auth/signup
         if (path === '/auth/signup' && method === 'POST') {
             console.log('[REST] Handling signup...');
+            // Per-IP signup budget, checked before body parsing so
+            // mass-registration scripts burn their budget cheaply.
+            const signupIp = getClientIp(req);
+            const signupRl = signupIpLimiter.check(`signup:ip:${signupIp}`);
+            if (!signupRl.allowed) {
+                return sendRateLimited(res, signupRl.retryAfterMs, 'Too many signups from this address');
+            }
             const body = await parseJsonBody(req);
             // Boundary validation: length caps, email format, min password
             // length, prototype-pollution guard. Throws ValidationError -> 400.
@@ -161,22 +201,45 @@ export async function restApiHandler(req, res, next) {
 
         // 3. POST /auth/login
         if (path === '/auth/login' && method === 'POST') {
+            // Brute-force guard, cheapest checks first: per-IP budget (before
+            // body parsing), then — after validation gives us a username —
+            // account lockout, then the per-account budget. Lockout is
+            // checked before the account budget so a locked account reports
+            // "temporarily locked" instead of a generic rate limit.
+            const loginIp = getClientIp(req);
+            const ipRl = loginIpLimiter.check(`login:ip:${loginIp}`);
+            if (!ipRl.allowed) {
+                return sendRateLimited(res, ipRl.retryAfterMs, 'Too many login attempts from this address');
+            }
             const body = await parseJsonBody(req);
             // Type/length caps only — no min length on login (a legacy user
             // with a short password must still attempt; it fails closed).
             const username = assertString(body.username, { field: 'username', min: 1, max: LIMITS.email.max });
             const password = assertString(body.password, { field: 'password', min: 1, max: 4096 });
 
+            const lockedMs = loginTracker.lockedRemainingMs(username);
+            if (lockedMs > 0) {
+                return sendRateLimited(res, lockedMs, 'Account temporarily locked after too many failed login attempts');
+            }
+            const acctRl = loginAccountLimiter.check(`login:account:${username}`);
+            if (!acctRl.allowed) {
+                return sendRateLimited(res, acctRl.retryAfterMs, 'Too many login attempts for this account');
+            }
+
             const user = await prisma.user.findUnique({ where: { username } });
             // Single generic message: unknown users, hashless legacy rows,
             // and wrong passwords all look alike to an attacker.
+            // Lockout failures are recorded ONLY for real accounts (see the
+            // lockout-poisoning note in the GraphQL login resolver).
             if (!user || !user.passwordHash) {
                 return sendJson(res, { error: 'Invalid credentials' }, 401);
             }
             const ok = await verifyPassword(password, user.passwordHash);
             if (!ok) {
+                loginTracker.recordFailure(username);
                 return sendJson(res, { error: 'Invalid credentials' }, 401);
             }
+            loginTracker.recordSuccess(username);
 
             const tokenString = await generateAuthToken(user);
             return sendJson(res, {

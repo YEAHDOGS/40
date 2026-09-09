@@ -28,7 +28,15 @@ const yoga = createYoga({
 			const decoded = await verifyAuthToken(token);
 			if (decoded) userId = decoded.userId;
 		}
-		return { userId, token };
+		// Client IP for the auth rate limiters (shared with the REST
+		// surface). X-Forwarded-For wins behind a proxy; 'unknown' when the
+		// transport gives us nothing (tests, direct sockets).
+		const fwd = request.headers.get('x-forwarded-for');
+		const clientIp =
+			(fwd && fwd.split(',')[0].trim()) ||
+			request.headers.get('x-real-ip') ||
+			'unknown';
+		return { userId, token, clientIp };
 	}
 });
 
