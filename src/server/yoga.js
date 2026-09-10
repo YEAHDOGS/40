@@ -37,12 +37,9 @@ const yoga = createYoga({
 	}
 });
 
-export default function graphqlYogaPlugin() {
-	return {
-		name: 'vite-plugin-graphql-yoga',
-		configureServer(server) {
-			server.middlewares.use(yoga.graphqlEndpoint, yoga);
-			server.middlewares.use('/api', restApiHandler);
-		}
-	};
-}
+// Named exports for the vite plugin (see ../../vite.config.js). The plugin
+// lazily imports this module inside configureServer — which only runs under
+// `vite dev` — so a static `vite build` (NODE_ENV=production) never executes
+// these module-level statements and never requires a production JWT_SECRET
+// just to bundle the frontend.
+export { yoga, restApiHandler };
