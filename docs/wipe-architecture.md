@@ -72,7 +72,7 @@ alignment deliberately — a human chose this moment.
 - game scores — arcade stats are explicitly "stat data" per the README
 - wipe cycle history — the audit trail of what was destroyed, and when
 
-**Open design questions** (flagged for Brandon, not decided here):
+**Open design questions** (flagged for the founder, not decided here):
 
 - Should follows survive? Keeping them preserves community across wipes; deleting
   them makes each cycle a true fresh start. Currently they survive.
