@@ -11,8 +11,6 @@
 	`;
 
 	const client = getContext("urql");
-
-	const client = getContext("urql");
 	const wipeQuery = queryStore({
 		client,
 		query: NextWipeQuery,
