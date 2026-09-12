@@ -18,8 +18,9 @@
   <meta property="og:image" content="https://40.wearedogs.net/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="40Forty: a countdown to the next wipe. Social media that deletes itself every 40 days.">
+  <meta property="og:image:alt" content="40Forty: the countdown to the next wipe. Social media that deletes itself every 40 days.">
   <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" as="image" href="./img/40-hero.webp" type="image/webp">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -27,26 +28,28 @@
 
   <header class="site">
     <div class="nav">
-      <a class="brand" href="./" aria-label="40Forty home">
+      <a class="brand" href="#wipe" aria-label="40Forty home">
         <span class="mark" aria-hidden="true">40</span>
         <span class="word">40Forty</span>
       </a>
-      <nav aria-label="Sections">
-        <a href="#idea">The idea</a>
-        <a href="#dies">What dies</a>
-        <a href="#contract">The contract</a>
-        <a href="#notify">Notify</a>
-        <a class="ext" href="https://github.com/YEAHDOGS/40">GitHub</a>
+      <nav aria-label="Panels">
+        <a href="#gone">Gone</a>
+        <a href="#clock">Clock</a>
+        <a href="#burn">Try it</a>
+        <a class="ext" href="#first">Get notified</a>
       </nav>
     </div>
   </header>
 
-  <main id="content">
-    <!-- HERO: the countdown is the brand -->
-    <section class="hero" id="top" aria-label="Countdown to the next wipe">
-      <canvas class="ash" id="ash" aria-hidden="true"></canvas>
-      <div class="hero-inner">
-        <p class="eyebrow">DOGS &middot; a temporary social media</p>
+  <main id="content" class="panels">
+
+    <!-- PANEL 1: WIPE (hero) -->
+    <section class="panel hero" id="wipe" aria-label="40Forty: social media that deletes itself">
+      <div class="bg" aria-hidden="true">
+        <img src="./img/40-hero.webp" alt="" fetchpriority="high">
+        <div class="scrim"></div>
+      </div>
+      <div class="hero-count" data-reveal>
         <p class="count-label">Until everything deletes itself</p>
         <div class="count" role="timer" aria-label="Countdown to the next wipe" id="count">
           <div class="unit"><span class="num" id="d">--</span><span class="key">days</span></div>
@@ -57,115 +60,126 @@
           <span class="colon" aria-hidden="true">:</span>
           <div class="unit"><span class="num" id="s">--</span><span class="key">sec</span></div>
         </div>
-        <div class="cycle" aria-hidden="true"><span id="cyclebar"></span></div>
         <p class="count-note">A rolling 40-day grid, counting. The concept, live in miniature.</p>
-        <h1 class="line">Post it. Forget it.<br>Forty days.</h1>
-        <p class="sub">Work in progress. More by 2027.</p>
-        <p class="cta-row"><a class="btn" href="#notify">Notify me</a></p>
       </div>
-      <p class="scroll-cue"><a href="#idea">The idea</a></p>
+      <div class="hero-word" aria-hidden="true"><span data-reveal>40</span></div>
+      <div class="hero-foot" data-reveal>
+        <p class="line">Post it. Forget it. Forty days.</p>
+        <p class="sub">A work in progress. More by 2027.</p>
+      </div>
+      <p class="scroll-cue" aria-hidden="true"><a href="#gone" tabindex="-1">scroll</a></p>
     </section>
 
-    <!-- THE IDEA -->
-    <section class="block" id="idea" aria-labelledby="idea-h">
-      <div class="wrap reveal">
-        <p class="eyebrow">The idea</p>
-        <h2 id="idea-h">Nothing here lasts.</h2>
-        <p class="lede">Every 40 days, the feed empties itself. Posts, replies, reposts, likes, photos, video: permanently deleted, no way back.</p>
-        <p class="lede dim">Say the honest thing. The clock forgives you.</p>
+    <!-- PANEL 2: GONE -->
+    <section class="panel" id="gone" aria-labelledby="gone-h">
+      <div class="bg" aria-hidden="true">
+        <img src="./img/40-gone.webp" alt="" loading="lazy" decoding="async">
+        <div class="scrim right"></div>
       </div>
-    </section>
-
-    <!-- WHAT DIES / WHAT LIVES -->
-    <section class="block" id="dies" aria-labelledby="dies-h">
-      <div class="wrap">
-        <p class="eyebrow reveal">The wipe</p>
-        <h2 id="dies-h" class="reveal">What dies. What lives.</h2>
-        <div class="twin">
-          <div class="col dies reveal">
-            <h3>Dies</h3>
-            <ul>
-              <li>Posts, replies, reposts</li>
-              <li>Likes</li>
-              <li>Media: photos and video</li>
-              <li>Hashtags</li>
-              <li>Notifications</li>
-            </ul>
-            <p class="foot">Row by row. Blob by blob. No archives, no recovery.</p>
-          </div>
-          <div class="col lives reveal">
-            <h3>Lives</h3>
-            <ul>
-              <li>People and follows</li>
-              <li>Game scores</li>
-              <li>The wipe history itself</li>
-            </ul>
-            <p class="foot">The community survives. The content does not.</p>
-          </div>
+      <div class="pos top-right">
+        <h2 class="word-xl" id="gone-h"><span data-reveal>GONE</span></h2>
+        <div class="copy" data-reveal>
+          <p class="short">Posts. Replies. Likes. Photos. Video.</p>
+          <p class="short dim">Row by row, blob by blob. No archives, no recovery.</p>
         </div>
       </div>
     </section>
 
-    <!-- THE CONTRACT -->
-    <section class="block" id="contract" aria-labelledby="contract-h">
-      <div class="wrap">
-        <p class="eyebrow reveal">The contract</p>
-        <h2 id="contract-h" class="reveal">The wipe cannot be skipped.</h2>
-        <ol class="laws">
-          <li class="reveal"><span class="n" aria-hidden="true">01</span><p>One source of truth: a single 40-day constant. The countdown, the API, and the scheduler all read the same number.</p></li>
-          <li class="reveal"><span class="n" aria-hidden="true">02</span><p>Ask for the countdown and an overdue purge runs first. No cron, no problem: the clock enforces itself.</p></li>
-          <li class="reveal"><span class="n" aria-hidden="true">03</span><p>No visitor can trigger it. The wipe fires on the grid, or by an admin key. Never by a tap.</p></li>
-        </ol>
+    <!-- PANEL 3: STAYS -->
+    <section class="panel" id="stays" aria-labelledby="stays-h">
+      <div class="bg flat" aria-hidden="true"></div>
+      <div class="pos mid-left">
+        <h2 class="word-xl ember" id="stays-h"><span data-reveal>STAYS</span></h2>
+        <div class="copy" data-reveal>
+          <p class="short">People. Follows. Game scores. The wipe history itself.</p>
+          <p class="short dim">The community survives. The content does not.</p>
+        </div>
       </div>
     </section>
 
-    <!-- HUMANS -->
-    <section class="block" id="humans" aria-labelledby="humans-h">
-      <div class="wrap reveal">
-        <p class="eyebrow">Humans only</p>
-        <h2 id="humans-h">Verified in. Anonymous inside.</h2>
-        <p class="lede">Joining takes proof you are a person. Inside, you are nobody in particular. No bots, no spam farms, no ads. Ever.</p>
+    <!-- PANEL 4: CLOCK -->
+    <section class="panel" id="clock" aria-labelledby="clock-h">
+      <div class="bg" aria-hidden="true">
+        <img src="./img/40-clock.webp" alt="" loading="lazy" decoding="async">
+        <div class="scrim"></div>
+      </div>
+      <div class="pos bottom-left">
+        <h2 class="word-xl" id="clock-h"><span data-reveal>40 DAYS</span></h2>
+        <div class="copy" data-reveal>
+          <p class="short">One constant. No skip. No visitor trigger.</p>
+          <p class="short dim">The countdown, the API, and the purge all read the same number.</p>
+        </div>
       </div>
     </section>
 
-    <!-- NOTIFY -->
-    <section class="block dark" id="notify" aria-labelledby="notify-h">
-      <div class="wrap reveal">
-        <p class="eyebrow">Wake me up</p>
-        <h2 id="notify-h">Get notified</h2>
-        <p class="lede dim">When 40Forty opens its doors, be first through them.</p>
-        <form data-notify novalidate>
-          <div class="fields">
-            <div class="field">
-              <label for="email">Email address</label>
-              <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" aria-describedby="email-error">
+    <!-- PANEL 5: HUMAN -->
+    <section class="panel" id="human" aria-labelledby="human-h">
+      <div class="bg" aria-hidden="true">
+        <img src="./img/40-verified.webp" alt="" loading="lazy" decoding="async">
+        <div class="scrim left"></div>
+      </div>
+      <div class="pos bottom-right">
+        <h2 class="word-xl" id="human-h"><span data-reveal>HUMAN</span></h2>
+        <div class="copy" data-reveal>
+          <p class="short">Verified in. Anonymous inside.</p>
+          <p class="short dim">Proof you are a person to join. Nobody in particular within. No bots, no spam farms, no ads. Ever.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL 6: BURN (interactive demo) -->
+    <section class="panel burn" id="burn" aria-labelledby="burn-h">
+      <div class="bg flat" aria-hidden="true"></div>
+      <div class="pos top-left">
+        <h2 class="word-lg" id="burn-h"><span data-reveal>TRY IT</span></h2>
+        <div class="demo" data-reveal>
+          <p class="short">Post a note. Watch it burn.</p>
+          <form class="burn-form" id="burnForm">
+            <label class="vis" for="burnText">Your note (120 characters max)</label>
+            <input id="burnText" type="text" maxlength="120" placeholder="Say the honest thing" autocomplete="off">
+            <button type="submit" class="btn">Feed it to the fire</button>
+          </form>
+          <div class="feed" id="feed" aria-live="polite"></div>
+          <p class="fine">A demo: 40 seconds stands in for 40 days. Nothing leaves your device.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL 7: FIRST (notify) -->
+    <section class="panel first" id="first" aria-labelledby="first-h">
+      <div class="bg flat" aria-hidden="true"></div>
+      <div class="pos mid">
+        <h2 class="word-xl" id="first-h"><span data-reveal>FIRST</span></h2>
+        <div class="notify" data-reveal>
+          <p class="short">When the doors open, be through them first.</p>
+          <form data-notify novalidate>
+            <div class="fields">
+              <div class="field">
+                <label for="email">Email address</label>
+                <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" aria-describedby="email-error">
+              </div>
+              <button type="submit" class="btn"><span class="btn-label">Notify me</span></button>
             </div>
-            <button type="submit" class="btn"><span class="spinner" aria-hidden="true"></span><span class="btn-label">Notify me</span></button>
-          </div>
-          <p class="field-error" id="email-error" aria-live="polite"></p>
-          <p class="form-note">A front-end placeholder for now. Nothing is transmitted or stored.</p>
-        </form>
+            <p class="field-error" id="email-error" aria-live="polite"></p>
+            <p class="fine">Honest capture: saved on this device only, nothing is sent anywhere yet.</p>
+          </form>
+        </div>
+        <footer class="foot-panel">
+          <a class="badge" href="https://wearedogs.net" aria-label="This product was made by DOGS">
+            <img src="./img/made-by-dogs.png" alt="This product was made by DOGS" width="180" height="60" loading="lazy" decoding="async">
+          </a>
+          <nav aria-label="Footer">
+            <a href="./">Home</a>
+            <a href="./privacy.html">Privacy</a>
+            <a href="./terms.html">Terms</a>
+            <a href="https://github.com/YEAHDOGS/40">GitHub</a>
+          </nav>
+          <p class="fine">No cookies. No trackers. No ads. &middot; &copy; 2026 DOGS</p>
+        </footer>
       </div>
     </section>
+
   </main>
-
-  <footer class="foot">
-    <div class="wrap">
-      <p class="madeby">
-        <img src="./dogs-logo.svg" alt="DOGS logo: a black-and-white Labrador with its tongue out" width="24" height="24" loading="lazy" decoding="async">
-        This product was made by <a href="https://wearedogs.net">DOGS</a>
-      </p>
-      <nav aria-label="Footer">
-        <a href="./">Home</a>
-        <a href="./privacy.html">Privacy</a>
-        <a href="./terms.html">Terms</a>
-        <a href="https://github.com/YEAHDOGS/40">GitHub</a>
-      </nav>
-      <p class="fine">No cookies. No trackers. No ads. &middot; &copy; 2026 DOGS</p>
-    </div>
-  </footer>
-
-  <a class="sticky-cta" id="stickyCta" href="#notify">Notify me</a>
 
   <script src="./app.js" defer></script>
 </body>

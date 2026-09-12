@@ -1,161 +1,127 @@
-// 40Forty landing: countdown, ash particles, reveals, sticky CTA, notify form.
-// Notify form is front-end only for now (no backend yet).
+// 40Forty snap-panel landing: countdown, clip reveals, burn demo, notify form.
+// No scroll listeners. Transform/opacity motion only.
 (function () {
   'use strict';
 
   var reduceMotion = window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---------- countdown: rolling 40-day grid ---------- */
+  /* ---------- countdown: rolling 40-day grid (concept only) ---------- */
   var CYCLE = 40 * 24 * 60 * 60 * 1000;
-  var ANCHOR = Date.UTC(2026, 0, 1); // grid epoch; concept countdown only
+  var ANCHOR = Date.UTC(2026, 0, 1); // grid epoch
   var dEl = document.getElementById('d');
   var hEl = document.getElementById('h');
   var mEl = document.getElementById('m');
   var sEl = document.getElementById('s');
-  var bar = document.getElementById('cyclebar');
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
-
-  function setNum(el, val) {
-    var t = pad(val);
-    if (el.textContent !== t) {
-      el.textContent = t;
-      if (!reduceMotion) {
-        el.classList.add('tick');
-        setTimeout(function () { el.classList.remove('tick'); }, 180);
-      }
-    }
-  }
-
   function tick() {
     var now = Date.now();
     var elapsed = (now - ANCHOR) % CYCLE;
     var left = CYCLE - elapsed;
-    setNum(dEl, Math.floor(left / 86400000));
-    setNum(hEl, Math.floor(left / 3600000) % 24);
-    setNum(mEl, Math.floor(left / 60000) % 60);
-    setNum(sEl, Math.floor(left / 1000) % 60);
-    if (bar) bar.style.width = ((elapsed / CYCLE) * 100).toFixed(3) + '%';
+    dEl.textContent = pad(Math.floor(left / 86400000));
+    hEl.textContent = pad(Math.floor(left / 3600000) % 24);
+    mEl.textContent = pad(Math.floor(left / 60000) % 60);
+    sEl.textContent = pad(Math.floor(left / 1000) % 60);
   }
   if (dEl) { tick(); setInterval(tick, 1000); }
 
-  /* ---------- ash: slow embers drifting up the hero ---------- */
-  var canvas = document.getElementById('ash');
-  if (canvas && !reduceMotion) {
-    var ctx = canvas.getContext('2d');
-    var W = 0, H = 0, parts = [], running = true;
+  /* ---------- clip reveals: observe the PANEL, reveal children ---------- */
+  var panels = document.querySelectorAll('.panel');
+  if (panels.length && 'IntersectionObserver' in window && !reduceMotion) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); }
+        else { en.target.classList.remove('in'); }
+      });
+    }, { threshold: 0.35 });
+    panels.forEach(function (p) { io.observe(p); });
+  } else {
+    panels.forEach(function (p) { p.classList.add('in'); });
+  }
 
-    function size() {
-      var r = canvas.parentElement.getBoundingClientRect();
-      W = canvas.width = Math.floor(r.width);
-      H = canvas.height = Math.floor(r.height);
+  /* ---------- burn demo: post a note, watch it die ---------- */
+  var BURN_MS = 40000; // 40 seconds stands in for 40 days
+  var form = document.getElementById('burnForm');
+  var input = document.getElementById('burnText');
+  var feed = document.getElementById('feed');
+
+  function burn(note) {
+    var bar = note.querySelector('.ttl span');
+    var started = Date.now();
+    function step() {
+      var elapsed = Date.now() - started;
+      var left = Math.max(0, 1 - elapsed / BURN_MS);
+      bar.style.transform = 'scaleX(' + left.toFixed(3) + ')';
+      if (left > 0) { setTimeout(step, 1000); return; }
+      note.classList.add('dying');
+      setTimeout(function () {
+        var g = document.createElement('p');
+        g.className = 'gone-note';
+        g.textContent = 'Wiped. Unrecoverable.';
+        note.replaceWith(g);
+        setTimeout(function () { g.remove(); }, 6000);
+      }, reduceMotion ? 0 : 1150);
     }
-    function spawn(p) {
-      p.x = Math.random() * W;
-      p.y = H + Math.random() * H * 0.3;
-      p.r = 0.6 + Math.random() * 1.8;
-      p.vy = 0.15 + Math.random() * 0.45;
-      p.vx = (Math.random() - 0.5) * 0.2;
-      p.a = 0.08 + Math.random() * 0.28;
-      p.ph = Math.random() * Math.PI * 2;
-      return p;
-    }
-    size();
-    for (var i = 0; i < 55; i++) {
-      var p = spawn({});
-      p.y = Math.random() * H; // prefill
-      parts.push(p);
-    }
-    var t = 0;
-    function frame() {
-      if (!running) return;
-      t += 0.016;
-      ctx.clearRect(0, 0, W, H);
-      for (var i = 0; i < parts.length; i++) {
-        var p = parts[i];
-        p.y -= p.vy;
-        p.x += p.vx + Math.sin(t + p.ph) * 0.12;
-        if (p.y < -8) spawn(p);
-        var tw = 0.7 + 0.3 * Math.sin(t * 2 + p.ph);
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, 6.2832);
-        ctx.fillStyle = 'rgba(224,154,60,' + (p.a * tw).toFixed(3) + ')';
-        ctx.fill();
-      }
-      requestAnimationFrame(frame);
-    }
-    frame();
-    window.addEventListener('resize', size);
-    if ('IntersectionObserver' in window) {
-      new IntersectionObserver(function (es) {
-        var vis = es[0].isIntersecting;
-        if (vis && !running) { running = true; frame(); }
-        else if (!vis) { running = false; }
-      }).observe(canvas.parentElement);
-    }
-    document.addEventListener('visibilitychange', function () {
-      if (document.hidden) { running = false; }
-      else if (!running) { running = true; frame(); }
+    step();
+  }
+
+  if (form && input && feed) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var text = input.value.trim();
+      if (!text) { input.focus(); return; }
+      while (feed.children.length >= 4) feed.removeChild(feed.firstChild);
+      var note = document.createElement('div');
+      note.className = 'note';
+      var p = document.createElement('p');
+      p.textContent = text; // textContent: no HTML injection
+      var ttl = document.createElement('div');
+      ttl.className = 'ttl';
+      ttl.setAttribute('aria-hidden', 'true');
+      var span = document.createElement('span');
+      ttl.appendChild(span);
+      note.appendChild(p);
+      note.appendChild(ttl);
+      feed.prepend(note);
+      input.value = '';
+      input.focus();
+      burn(note);
     });
   }
 
-  /* ---------- reveals ---------- */
-  var revs = document.querySelectorAll('.reveal');
-  if (revs.length && 'IntersectionObserver' in window && !reduceMotion) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
-    revs.forEach(function (r) { io.observe(r); });
-  } else {
-    revs.forEach(function (r) { r.classList.add('in'); });
-  }
-
-  /* ---------- sticky mobile CTA ---------- */
-  var sticky = document.getElementById('stickyCta');
-  var hero = document.querySelector('.hero');
-  var notify = document.getElementById('notify');
-  if (sticky && 'IntersectionObserver' in window) {
-    var pastHero = false, atNotify = false;
-    function update() { sticky.classList.toggle('show', pastHero && !atNotify); }
-    if (hero) new IntersectionObserver(function (es) {
-      pastHero = !es[0].isIntersecting && es[0].boundingClientRect.top < 0;
-      update();
-    }).observe(hero);
-    if (notify) new IntersectionObserver(function (es) {
-      atNotify = es[0].isIntersecting;
-      update();
-    }, { threshold: 0.15 }).observe(notify);
-  }
-
-  /* ---------- notify form (placeholder, no backend) ---------- */
-  var form = document.querySelector('form[data-notify]');
-  if (form) {
-    var email = form.querySelector('input[type="email"]');
-    var error = form.querySelector('.field-error');
-    var button = form.querySelector('button');
+  /* ---------- notify form: honest localStorage capture ---------- */
+  var notify = document.querySelector('form[data-notify]');
+  if (notify) {
+    var email = notify.querySelector('input[type="email"]');
+    var error = notify.querySelector('.field-error');
+    var button = notify.querySelector('button');
 
     function setError(msg) {
       error.textContent = msg;
       email.setAttribute('aria-invalid', msg ? 'true' : 'false');
-      if (msg) email.focus();
     }
     email.addEventListener('input', function () { setError(''); });
 
-    form.addEventListener('submit', function (e) {
+    notify.addEventListener('submit', function (e) {
       e.preventDefault();
-      var value = email.value.trim();
-      if (!value) { setError('Please enter your email address.'); return; }
+      var value = email.value.trim().toLowerCase();
+      if (!value) { setError('Please enter your email address.'); email.focus(); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
         setError('That does not look like an email address.');
+        email.focus();
         return;
       }
       setError('');
-      button.disabled = true;
-      button.classList.add('loading');
-      setTimeout(function () { window.location.href = './thanks.html'; }, 800);
+      try {
+        var list = JSON.parse(localStorage.getItem('forty-notify') || '[]');
+        if (list.indexOf(value) === -1) list.push(value);
+        localStorage.setItem('forty-notify', JSON.stringify(list));
+      } catch (err) { /* storage full or blocked: still confirm */ }
+      var ok = document.createElement('p');
+      ok.className = 'form-ok';
+      ok.textContent = 'You are on the list. See you at the next cycle.';
+      notify.replaceWith(ok);
     });
   }
 })();
