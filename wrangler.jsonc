@@ -1,0 +1,65 @@
+{
+  // 40 runs as one Worker: static assets from dist/ (free, never invoke the Worker) plus /api/* through api/worker.js.
+  // Top level is PRODUCTION: Workers Builds' deploy command on master (`node scripts/deploy.js`: migrate D1, then
+  // `wrangler deploy`) deploys exactly this. Never deploy production by hand.
+  // `wrangler dev` uses these bindings too, but only as local Miniflare copies under .wrangler/state, never the remote ones.
+  "name": "40",
+  "main": "api/worker.js",
+  // Every deploy builds the web app first, so dist/ is never stale or missing whatever the Builds build command is.
+  "build": { "command": "npm run build", "cwd": ".", "watch_dir": "src" },
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Production answers on the custom domain only. Worker Previews still get workers.dev URLs.
+  "routes": [{ "pattern": "40.dogs.red", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": true,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Client-side routes are in the hash (#/...); unknown paths fall back to index.html.
+    "not_found_handling": "single-page-application",
+    // Only the API costs Worker requests; everything else is served straight from the asset store.
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "forty", "database_id": "7733e047-87b8-4563-bc6f-3b3fb05e077b", "migrations_dir": "api/migrations" }
+  ],
+  // Hourly check: when the 40-day cycle has ended, everything public is deleted (api/lib/cycle.js).
+  "triggers": { "crons": ["0 * * * *"] },
+  "vars": {
+    // Extra allowed origins (comma-separated). The Worker's own origin and the native apps are built in.
+    "ALLOWED_ORIGINS": "",
+    // Free-tier guard (api/lib/limits.js). "off" removes every limit: only do that on a paid plan.
+    "FREE_TIER_GUARD": "on",
+    // The fraction of the account's free daily allowance this Worker may use (other Workers share it).
+    "FREE_TIER_SHARE": "0.33"
+  },
+  // Worker Previews: every pull request branch gets its own Preview (`npx wrangler preview`, run by Workers Builds
+  // through scripts/preview.js). Previews never inherit the production bindings above: they run on the staging
+  // database, which only ever holds dummy data (`npm run seed:preview`).
+  "previews": {
+    "d1_databases": [
+      { "binding": "DB", "database_name": "forty-staging", "database_id": "bb04ce85-a410-4c96-b7f0-c7fc4d95b895", "migrations_dir": "api/migrations" }
+    ],
+    "vars": { "ALLOWED_ORIGINS": "", "FREE_TIER_GUARD": "on", "FREE_TIER_SHARE": "0.05" }
+  },
+  "env": {
+    // The handle for staging from the command line (`--env preview`): migrations and the seeder use it.
+    // It is not deployed as a Worker of its own.
+    "preview": {
+      "name": "40-preview",
+      "routes": [],
+      "workers_dev": true,
+      "assets": { "directory": "./dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "forty-staging", "database_id": "bb04ce85-a410-4c96-b7f0-c7fc4d95b895", "migrations_dir": "api/migrations" }
+      ],
+      "triggers": { "crons": [] },
+      "vars": { "ALLOWED_ORIGINS": "", "FREE_TIER_GUARD": "on", "FREE_TIER_SHARE": "0.05" }
+    }
+  }
+  // Secrets (never in this file). Production: BETTER_AUTH_SECRET (npx wrangler secret put BETTER_AUTH_SECRET).
+  // Previews: BETTER_AUTH_SECRET and PREVIEW_PASSWORD (npx wrangler preview base-config secret put <NAME>).
+  // Local: .dev.vars (see .dev.vars.example).
+}

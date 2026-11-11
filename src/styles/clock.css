@@ -1,0 +1,134 @@
+/* The split-flap countdown to the global wipe (src/components/Timer.svelte), from the original 40 build.
+   Colors come from the --clock-* tokens in theme.css. */
+
+.clock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 12px;
+  background: var(--clock-bg);
+  border: 1px solid var(--clock-light-faint);
+  box-shadow: inset 0 2px 4px var(--clock-dark), 0 8px 16px var(--clock-dark);
+}
+
+/* Metal hinges on the left and right edges. */
+.clock__hinge {
+  position: absolute;
+  top: 58%;
+  width: 6px;
+  height: 32px;
+  transform: translateY(-50%);
+  background: linear-gradient(to right, var(--clock-light), var(--clock-light-faint));
+  border: 1px solid var(--clock-dark);
+}
+.clock__hinge--left { left: -3px; }
+.clock__hinge--right { right: -3px; }
+
+.clock__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--clock-light-faint);
+}
+.clock__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--clock-label);
+}
+.clock__gear {
+  display: flex;
+  padding: 2px;
+  color: var(--clock-light);
+}
+.clock__gear:hover { color: var(--clock-label); }
+
+.clock__tiles {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+.clock__tile {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 60px;
+}
+.clock__flap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid var(--clock-dark-faint);
+  border-radius: 5px;
+  background-color: var(--clock-tile);
+  background-image: linear-gradient(to bottom,
+      var(--clock-light) 0%, var(--clock-light-faint) 50%, var(--clock-dark-faint) 50%, var(--clock-dark) 100%);
+  box-shadow: 0 4px 6px var(--clock-dark), inset 0 1px 0 var(--clock-light);
+}
+/* The crease across the middle of each flap. */
+.clock__flap::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 2px;
+  background: var(--clock-dark-faint);
+  border-top: 1px solid var(--clock-dark);
+  border-bottom: 1px solid var(--clock-light-faint);
+}
+.clock__digit {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: var(--clock-digit);
+}
+.clock__unit {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--clock-label);
+}
+.clock__colon {
+  padding-bottom: 18px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--clock-light);
+  animation: clock-pulse 1.5s infinite alternate;
+}
+.clock__skins {
+  width: 100%;
+  margin-top: 14px;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--clock-label);
+  background: var(--clock-bg);
+  border: 1px solid var(--clock-light);
+}
+
+@keyframes clock-pulse {
+  from { opacity: 0.3; }
+  to { opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clock__colon { animation: none; }
+}

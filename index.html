@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/src/assets/icon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="author" content="DOGS" />
+  <title>40</title>
+  <meta name="description"
+    content="Track any habit. Share what you choose. Everything public is deleted every 40 days." />
+</head>
+
+<body class="bg-ink text-text">
+  <div id="app"></div>
+
+  <!-- Static fallback for browsers too old to run the app (Potato Target: Chrome 40), and for no-JS visitors.
+       Plain HTML only. Styles: src/styles/legacy-fallback.css. -->
+  <div id="legacy-fallback" class="legacy-fallback">
+    <div class="legacy-fallback__text">
+      <h1 class="legacy-fallback__title">40</h1>
+      <p class="legacy-fallback__tagline">Track any habit. Share what you choose. Everything public is deleted every
+        40 days. This browser is too old to run the app: please open it in a current one.</p>
+    </div>
+  </div>
+  <!-- Must stay ES5: this is the only script the Potato Target runs. Hides the fallback before first paint on
+       browsers that can run the app (CSS cascade layers = the Tailwind v4 floor, see APP_CSS_TARGET in vite.config.js),
+       and brings it back if the app crashes before rendering anything. -->
+  <script>
+    (function () {
+      var fallback = document.getElementById('legacy-fallback');
+      if (!window.CSSLayerBlockRule) return;
+      fallback.setAttribute('hidden', '');
+      window.addEventListener('error', function () {
+        if (!document.getElementById('app').firstChild) fallback.removeAttribute('hidden');
+      });
+    })();
+  </script>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,104 @@
+@import "tailwindcss";
+/* Colors, theme tokens, fonts and custom variants (short:, ultrawide:) */
+@import "./styles/theme.css";
+@import "./styles/clock.css";
+@import "./styles/legacy-fallback.css";
+
+@source not "./tauri";
+
+@layer base {
+  body {
+    @apply m-0 min-h-dvh overflow-x-hidden bg-ink font-sans text-text;
+    /* The micro-grid behind everything. */
+    background-image:
+      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-attachment: fixed;
+    /* Keep content clear of phone notches and home bars. */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3 {
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    text-transform: uppercase;
+  }
+
+  button:not(:disabled), select, a { cursor: pointer; }
+}
+
+/* ── Scrollbars in the theme accents ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--color-ink); }
+::-webkit-scrollbar-thumb { background: var(--color-ember); border: 2px solid var(--color-ink); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-moss); }
+* { scrollbar-width: thin; scrollbar-color: var(--color-ember) var(--color-ink); }
+
+@layer components {
+  /* A sharp panel: the surface every block of content sits on. */
+  .card {
+    @apply border border-line bg-panel p-4 transition-colors duration-200;
+    box-shadow: inset 0 0 20px color-mix(in srgb, var(--color-ink) 50%, transparent);
+  }
+
+  /* Text fields, selects and textareas. */
+  .field {
+    @apply w-full border border-line bg-ink px-3 py-2.5 font-mono text-sm text-text outline-none transition-all duration-200 placeholder:text-mute/60 focus:border-moss;
+  }
+  .field:focus { box-shadow: inset 2px 0 0 var(--color-moss); }
+
+  /* The primary action. */
+  .btn {
+    @apply flex items-center justify-center gap-2 border border-ember bg-ember px-4 py-2.5 font-mono text-sm font-bold uppercase tracking-[0.15em] text-ink transition-all duration-200;
+  }
+  .btn:disabled { @apply cursor-not-allowed border-line bg-transparent text-mute opacity-50; }
+
+  /* Secondary actions. */
+  .btn-quiet {
+    @apply flex items-center justify-center gap-2 border border-line bg-transparent px-4 py-2.5 font-mono text-sm uppercase tracking-widest text-text transition-all duration-200;
+  }
+  .btn-quiet:disabled { @apply cursor-not-allowed text-mute opacity-50; }
+
+  /* Small mono captions: metadata, hints, counters. */
+  .label { @apply font-mono text-xs uppercase tracking-widest text-mute; }
+
+  /* The logo box: a hard offset shadow in the second accent. */
+  .logo-box {
+    @apply flex shrink-0 items-center justify-center border-2 border-ember font-mono font-bold tracking-tighter text-ember;
+    box-shadow: 4px 4px 0 0 var(--color-moss);
+  }
+
+  /* The wordmark: split into both accents, twitching now and then. */
+  .text-glitch {
+    @apply relative inline-block font-bold uppercase tracking-tighter text-text;
+    text-shadow: 2px 0 0 var(--color-ember), -2px 0 0 var(--color-moss);
+    animation: glitch 3s infinite alternate-reverse;
+  }
+
+  /* Hover glow only where there is a real pointer; on touch screens it would stick. */
+  @media (hover: hover) {
+    .card:hover {
+      @apply border-moss;
+      box-shadow: inset 0 0 0 1px var(--color-moss), 0 0 15px color-mix(in srgb, var(--color-moss) 10%, transparent);
+    }
+    .btn:not(:disabled):hover {
+      @apply bg-transparent text-ember;
+      box-shadow: inset 0 0 10px color-mix(in srgb, var(--color-ember) 50%, transparent), 0 0 10px color-mix(in srgb, var(--color-ember) 30%, transparent);
+    }
+    .btn-quiet:not(:disabled):hover {
+      @apply border-moss text-moss;
+      box-shadow: inset 0 0 10px color-mix(in srgb, var(--color-moss) 10%, transparent);
+    }
+  }
+}
+
+@keyframes glitch {
+  0%, 4%, 100% { text-shadow: 2px 0 0 var(--color-ember), -2px 0 0 var(--color-moss); }
+  2% { text-shadow: -2px 0 0 var(--color-ember), 2px 0 0 var(--color-moss); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-glitch { animation: none; }
+}

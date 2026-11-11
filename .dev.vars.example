@@ -1,0 +1,19 @@
+# Copy to .dev.vars (repo root, next to wrangler.jsonc) for local `npm run dev`. Never commit .dev.vars.
+# Production and Previews keep these as Worker secrets, never as plain vars.
+
+# Any long random string: node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+BETTER_AUTH_SECRET=
+
+# Only for `npm run seed:preview`: the demo account password. Must match the Previews secret
+# (npx wrangler preview base-config secret put PREVIEW_PASSWORD).
+DEMO_PASSWORD=
+
+# Sign-in providers (optional). Each turns on once its values are set. See README.md.
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+# FACEBOOK_CLIENT_ID=
+# FACEBOOK_CLIENT_SECRET=
+# APPLE_CLIENT_ID=
+# APPLE_TEAM_ID=
+# APPLE_KEY_ID=
+# APPLE_PRIVATE_KEY=

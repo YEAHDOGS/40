@@ -1,0 +1,152 @@
+/* Theme: every color, theme token, font and custom breakpoint variant lives here, never in components.
+   Each --color-* token becomes Tailwind utilities, e.g. --color-ember -> text-ember, bg-ember/15.
+   Literal copies of the default colors exist only where CSS variables can't reach: src/styles/legacy-fallback.css
+   (Chrome 40 page) and the theme-color meta in index.html. Keep them in step. */
+
+/* Short screens (phones on their side, small phones, squat displays): compact layout variant, e.g. short:hidden */
+@custom-variant short (@media (max-height: 640px));
+/* Ultra-wide displays (21:9 and wider): spread content sideways instead of leaving empty bleed, e.g. ultrawide:grid-cols-4 */
+@custom-variant ultrawide (@media (min-aspect-ratio: 21/9) and (min-width: 1536px));
+
+/* Vendored variable fonts (SIL Open Font License), latin subset. */
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('../assets/fonts/space-grotesk-latin-wght-normal.woff2') format('woff2');
+  font-weight: 300 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2');
+  font-weight: 100 800;
+  font-display: swap;
+}
+
+/* Semantic tokens. Components use these names only; each resolves to the active theme below. */
+@theme {
+  /* Page background. Used everywhere. */
+  --color-ink: var(--theme-bg);
+  /* Panels, the nav rails, inputs. */
+  --color-panel: var(--theme-surface);
+  /* Tracked calendar days and progress-bar tracks: the surface, lifted slightly. */
+  --color-raise: color-mix(in srgb, var(--theme-surface) 86%, var(--theme-text-main));
+  /* Borders and dividers. */
+  --color-line: var(--theme-border);
+  /* Main text. */
+  --color-text: var(--theme-text-main);
+  /* Secondary text and labels. */
+  --color-mute: var(--theme-text-muted);
+  /* Primary accent: the brand, primary buttons, and "did a vice" on the calendar. */
+  --color-ember: var(--theme-accent-primary);
+  /* Secondary accent: active nav, focus, links, and "did a good habit". */
+  --color-moss: var(--theme-accent-secondary);
+
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ── App themes (from the original 40 build). src/lib/theme.js sets data-theme on <html>; the first is the default. ── */
+
+/* Matrix Beyond */
+:root {
+  --theme-bg: #000000;
+  --theme-surface: #0a0a0a;
+  --theme-border: #1a1a1a;
+  --theme-accent-primary: #ff003c;
+  --theme-accent-secondary: #00ff41;
+  --theme-text-main: #f0f0f0;
+  --theme-text-muted: #777777;
+  /* Lines of the background micro-grid (src/app.css). */
+  --grid-line: color-mix(in srgb, var(--theme-text-main) 3%, transparent);
+  color-scheme: dark;
+}
+[data-theme='beyond'] {
+  --theme-bg: #020202;
+  --theme-surface: #090909;
+  --theme-border: #1a1a1a;
+  --theme-accent-primary: #e60000;
+  --theme-accent-secondary: #00e5ff;
+  --theme-text-main: #f4f4f5;
+  --theme-text-muted: #71717a;
+}
+[data-theme='vaporwave'] {
+  --theme-bg: #190028;
+  --theme-surface: #260040;
+  --theme-border: #4b0082;
+  --theme-accent-primary: #ff00c8;
+  --theme-accent-secondary: #00ffff;
+  --theme-text-main: #e0e0e0;
+  --theme-text-muted: #a080d0;
+}
+[data-theme='monochrome'] {
+  --theme-bg: #000000;
+  --theme-surface: #000000;
+  --theme-border: #333333;
+  --theme-accent-primary: #ffffff;
+  --theme-accent-secondary: #aaaaaa;
+  --theme-text-main: #ffffff;
+  --theme-text-muted: #777777;
+}
+[data-theme='tokyo-night'] {
+  --theme-bg: #1a1b26;
+  --theme-surface: #24283b;
+  --theme-border: #414868;
+  --theme-accent-primary: #f7768e;
+  --theme-accent-secondary: #73daca;
+  --theme-text-main: #c0caf5;
+  --theme-text-muted: #7a84b0;
+}
+[data-theme='gruvbox'] {
+  --theme-bg: #282828;
+  --theme-surface: #3c3836;
+  --theme-border: #504945;
+  --theme-accent-primary: #fe8019;
+  --theme-accent-secondary: #b8bb26;
+  --theme-text-main: #ebdbb2;
+  --theme-text-muted: #a89984;
+}
+
+/* ── Countdown clock skins (src/components/Timer.svelte sets data-clock; styles in src/styles/clock.css). ── */
+
+/* Vintage Split-Flap, the default */
+.clock {
+  --clock-bg: #1c1c1c;
+  --clock-tile: #e4e4e4;
+  --clock-digit: #1a1a1a;
+  --clock-label: #ff6600;
+  /* Highlights and shadows that give the flaps their depth, on any skin. */
+  --clock-light: rgb(255 255 255 / 25%);
+  --clock-light-faint: rgb(255 255 255 / 8%);
+  --clock-dark: rgb(0 0 0 / 30%);
+  --clock-dark-faint: rgb(0 0 0 / 10%);
+}
+.clock[data-clock='crt'] {
+  --clock-bg: #050f05;
+  --clock-tile: #0a1c0a;
+  --clock-digit: #33ff33;
+  --clock-label: #33ff33;
+}
+.clock[data-clock='cyber'] {
+  --clock-bg: #120024;
+  --clock-tile: #1d003a;
+  --clock-digit: #00f0ff;
+  --clock-label: #ff007f;
+}
+.clock[data-clock='pipboy'] {
+  --clock-bg: #0d1b0d;
+  --clock-tile: #1a331a;
+  --clock-digit: #ffb000;
+  --clock-label: #ffb000;
+}
+.clock[data-clock='matrix'] {
+  --clock-bg: #000000;
+  --clock-tile: #001100;
+  --clock-digit: #00ff00;
+  --clock-label: #00aa00;
+}
+.clock[data-clock='steampunk'] {
+  --clock-bg: #2b1810;
+  --clock-tile: #b58a30;
+  --clock-digit: #3d2510;
+  --clock-label: #d4af37;
+}
