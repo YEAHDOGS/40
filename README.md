@@ -1,44 +1,91 @@
-# 40Forty - a temporary social media
+# 40
 
-Everything deletes itself every forty days
+Track any habit. Share what you choose. Everything public is deleted every 40 days.
 
-# What is this?
+_Created by DOGS._
 
-40Forty is a new kind of social media with an emphasis on temporary expression. Every 40 days, all posts, comments, images, videos, everything is deleted permanently, with no way of recovery. Only users and stat data remain.
+- **Habits**: anything you want to quit (drinking, weed, doomscrolling) or build (running, yoga, a
+  cereal streak). Open a day on the calendar and tap what you did.
+- **Yours first**: every habit is private, friends-only (people who follow each other) or public. Private
+  habits never leave your account, not even inside anonymous comparisons.
+- **Stats**: streaks, month and year totals, and how you compare with everyone else who shares the same
+  habit, overall and in your state. Comparisons only appear once enough people share a habit.
+- **The feed**: posts, comments and shared records ("75 days in a row"). Every 40 days all of it is
+  deleted. Accounts, follows and your private records stay.
 
-Our terms of service prevent exporting anything from the website anywhere externally, whether it be screenshots or word of mouth. Anonymity and privacy is imperative to us, but so is spam filtering and delivering a premium bot-free experience. We long for the days when Reddit could be trusted, when it wasn't a dead internet bot farm spamming Amazon affiliate links. 40Forty uses a strict balance of verification and anonymity to allow humans to be human again. Express honest opinion without fear of cancel culture, brands against honest product reviews, or censorship.
+## Stack
 
-# The Wipe
+| Layer         | Tool                                                                      |
+| ------------- | ------------------------------------------------------------------------- |
+| UI            | Svelte 5 + SvelteKit (static SPA), plain JavaScript, Tailwind CSS v4      |
+| Native shells | Tauri v2 (Windows, macOS, Linux, Android, iOS)                            |
+| Backend       | One Cloudflare Worker (no framework): serves the web app **and** `/api/*` |
+| Data          | Cloudflare D1 (SQL migrations in `worker/migrations/` are the schema)     |
+| Users         | Better Auth: email + password, plus Google / Apple / Facebook             |
 
-The 40-day cycle is the product, not a background job. `WIPE_INTERVAL_DAYS = 40`
-in `src/server/wipe.js` is the single source of truth — the countdown, the API,
-and the scheduler all derive from it.
+```
+src/routes/     screens: / (track), /stats, /feed, /post, /person, /you
+src/lib/        api.js, auth.js, app.svelte.js (session state), dates.js, components/
+src/tauri/      native shell
+worker/         index.js (entry), api.js (routes), records.js (streaks, comparisons),
+                cycle.js (the 40-day wipe), limits.js (free-tier guard), preview.js, auth.js
+scripts/        deploy.js + preview.js (Workers Builds), seed-preview.js, build.js (native builds)
+landing/        the marketing site (GitHub Pages, separate from the app)
+```
 
-- **What dies:** posts, replies, reposts, likes, media, hashtags, notifications.
-- **What lives:** users, follows, game scores (stat data), and the wipe history itself.
-- **It can't be skipped:** the `nextWipe` query lazy-wipes — ask for the countdown
-  and an overdue purge runs first. `scripts/wipe-check.js --execute` is the cron
-  backstop for production.
-- **It can't be triggered by a visitor:** `triggerWipe` requires auth, and the
-  Timer component no longer fires it from the browser.
+## Run it locally
 
-Full contract: [docs/wipe-architecture.md](docs/wipe-architecture.md).
+Needs Node 24+ and pnpm. Native builds also need Rust and the
+[Tauri prerequisites](https://tauri.app/start/prerequisites/).
 
-# Features
+```sh
+pnpm install
+cp .env.example .env        # set BETTER_AUTH_SECRET
+pnpm db:migrate:local       # once: creates the local D1 database
+pnpm build                  # the Worker serves dist/web
+pnpm dev:api                # Worker + app on http://localhost:8787
+pnpm dev                    # or: Vite on http://localhost:5173 with hot reload (proxies /api)
+pnpm test && pnpm lint
+```
 
-- All content is blocked and hidden from non-users. This is a privacy-first social media
-- New User Accounts require id verification and a valid, unique credit card
-- Premium accounts get access to random chat (with gender and location filters)
-- Premium accounts get access to messages
-- Free accounts get limited posting and commenting functionality. Users can decide if they want their content visible to free accounts
-- While freedom of speech is imporant to us, certain content that goes against our terms of service, like gore, will be IP banned
-- Pixel art multiplayer creator
-- Multiplayer games
-- Web, Android, iOS, Desktop
-- Music sharing and hosting, playlist sharing and stats, live listening dj sets and watch party chatrooms
-- 3D virtual world rooms, with full customization and designer economy
-- Dating
-- Forty Marketplace
-- Ad free, we do not serve or host advertisements. Nothing in feed, no banners
-- Forty Map, to see nearby events, people, and places
+Native apps: `pnpm build:desktop`, `pnpm build:android`, `pnpm build:ios` (see
+[docs/BUILDING.md](docs/BUILDING.md)). They call the API at `PUBLIC_API_URL` from `.env`.
 
+## Deploys
+
+The Worker `40` is connected to this repository through Cloudflare Workers Builds.
+
+- **Production** (<https://40.dogs.red>): every push to `master` runs `node scripts/deploy.js`: build,
+  migrate the production database, deploy. Never deploy production by hand.
+- **Previews**: every other branch runs `node scripts/preview.js` and gets its own Worker Preview on the
+  **staging** database, which only ever holds dummy data. A Preview has one way in: the demo account, with
+  the Preview password (the `PREVIEW_PASSWORD` secret of the Previews base config). `pnpm seed:preview`
+  resets staging to the dummy data set.
+
+Migrations must be additive: staging is shared by all Previews, and production briefly runs old code on
+the new schema during a deploy.
+
+## Sign-in providers
+
+Each provider turns on by itself once its secrets exist (`pnpm wrangler secret put <NAME>`); the redirect
+URL to register is `https://40.dogs.red/api/auth/callback/<provider>`.
+
+| Provider | Secrets                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------- |
+| Google   | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                                  |
+| Facebook | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET`                                              |
+| Apple    | `APPLE_CLIENT_ID` (Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (.p8) |
+
+A provider's name and photo are never copied: new accounts get a neutral handle. Providers are offered
+on the web app only for now; the native apps use email + password.
+
+## Free-tier guard
+
+`worker/limits.js` keeps the Worker inside Cloudflare's free allowances. It meters real usage (requests,
+D1 rows read and written, database size) and, when the day's budget is spent, answers 503 "resting" until
+midnight UTC instead of running up a bill or starving the other Workers on the account. One address is
+also limited to 120 requests a minute.
+
+`FREE_TIER_SHARE` in `worker/wrangler.jsonc` is the fraction of the account's daily allowance this Worker
+may use. Once there are paying users, set `FREE_TIER_GUARD` to `"off"`; the file header lists what to
+delete to remove it completely.

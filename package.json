@@ -1,45 +1,80 @@
 {
-	"name": "40forty",
+	"name": "forty",
+	"version": "0.1.0",
+	"description": "40: track any habit, share what you choose, and everything public is wiped every 40 days. Created by DOGS.",
+	"author": "DOGS",
 	"private": true,
-	"version": "0.0.0",
 	"type": "module",
+	"packageManager": "pnpm@12.18.0",
+	"engines": {
+		"node": ">=24"
+	},
+	"imports": {
+		"#lib/*": "./src/lib/*"
+	},
 	"scripts": {
-		"dev": "vite",
+		"dev": "vite dev",
+		"dev:api": "pnpm wrangler dev --env-file .env",
 		"build": "vite build",
 		"preview": "vite preview",
-		"generate": "node scripts/generate.js",
-		"test:api": "node scripts/test-rest-api.js",
-		"test": "node --test tests/**/*.test.js"
-	},
-	"devDependencies": {
-		"@sveltejs/vite-plugin-svelte": "^7.1.2",
-		"@tailwindcss/vite": "^4.3.0",
-		"daisyui": "^5.5.1-beta.2",
-		"dotenv": "^17.4.2",
-		"prisma": "^6.4.1",
-		"prisma-generator-graphql-schema": "^0.0.6",
-		"sass-embedded": "^1.100.0",
-		"svelte": "^5.55.5",
-		"tailwindcss": "^4.3.0",
-		"vite": "^8.0.12"
+		"prepare": "svelte-kit sync || echo ''",
+		"lint": "prettier --check . && eslint .",
+		"format": "prettier --write .",
+		"test:unit": "vitest",
+		"test": "vitest --run",
+		"tauri": "tauri",
+		"wrangler": "wrangler --config worker/wrangler.jsonc",
+		"db:migrate:local": "pnpm wrangler d1 migrations apply DB --local",
+		"db:migrate:remote": "pnpm wrangler d1 migrations apply DB --remote",
+		"db:migrate:staging": "pnpm wrangler d1 migrations apply DB --remote --env preview",
+		"seed:preview": "node scripts/seed-preview.js",
+		"build:web": "node scripts/build.js web",
+		"build:desktop": "node scripts/build.js desktop",
+		"build:android": "node scripts/build.js android",
+		"build:ios": "node scripts/build.js ios",
+		"version:set": "node scripts/version.js"
 	},
 	"dependencies": {
-		"@graphql-tools/load-files": "^7.0.1",
-		"@graphql-tools/merge": "^9.1.9",
-		"@graphql-tools/mock": "^9.1.7",
-		"@lucide/svelte": "^1.18.0",
-		"@prisma/client": "^6.4.1",
-		"@urql/svelte": "^5.0.0",
-		"date-fns": "^4.4.0",
-		"graphql": "^16.14.2",
-		"graphql-scalars": "^1.25.0",
-		"graphql-yoga": "^5.21.2",
-		"jsonwebtoken": "^9.0.3",
-		"lucide-svelte": "^1.0.1",
-		"redis": "^6.0.0",
-		"urql": "^5.0.3"
+		"@tauri-apps/api": "^2.12.4",
+		"better-auth": "^1.7.18"
 	},
-	"prisma": {
-		"seed": "node prisma/seed.js"
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@sveltejs/adapter-static": "^4.0.0",
+		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/vite-plugin-svelte": "^7.2.0",
+		"@tailwindcss/vite": "^4.3.0",
+		"@tauri-apps/cli": "^2.12.4",
+		"eslint": "^10.4.1",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-svelte": "^3.19.0",
+		"globals": "^17.6.0",
+		"prettier": "^3.8.3",
+		"prettier-plugin-svelte": "^4.1.0",
+		"prettier-plugin-tailwindcss": "^0.8.0",
+		"svelte": "^5.57.2",
+		"tailwindcss": "^4.3.0",
+		"vite": "^8.3.0",
+		"vitest": "^4.1.8",
+		"wrangler": "^4.158.0"
+	},
+	"prettier": {
+		"useTabs": true,
+		"singleQuote": true,
+		"trailingComma": "none",
+		"printWidth": 100,
+		"plugins": [
+			"prettier-plugin-svelte",
+			"prettier-plugin-tailwindcss"
+		],
+		"overrides": [
+			{
+				"files": "*.svelte",
+				"options": {
+					"parser": "svelte"
+				}
+			}
+		],
+		"tailwindStylesheet": "./src/routes/layout.css"
 	}
 }

@@ -1,5 +1,0 @@
-type SearchResult {
-	posts: [Post!]!
-	users: [User!]!
-	hashtags: [Hashtag!]!
-}

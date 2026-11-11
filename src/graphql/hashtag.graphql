@@ -1,5 +1,0 @@
-extend type Hashtag {
-	trendingAt: DateTime
-	usageCount: Int!
-	trendingRank: Int
-}

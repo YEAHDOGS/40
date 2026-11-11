@@ -1,0 +1,48 @@
+@import 'tailwindcss';
+
+@source not '../tauri';
+
+/* Every color in the app. Components use these names only (bg-ink, text-mute, ...). */
+@theme {
+	/* Page background. */
+	--color-ink: #0b0b0d;
+	/* Cards, inputs, the nav bar. */
+	--color-panel: #16161b;
+	/* Pressed/selected surfaces and untracked calendar days. */
+	--color-raise: #22222a;
+	/* Borders and dividers. */
+	--color-line: #2c2c36;
+	/* Main text. */
+	--color-text: #ededf2;
+	/* Secondary text and labels. */
+	--color-mute: #9090a0;
+	/* Brand accent, and "did a vice" (a slip) on the calendar. */
+	--color-ember: #ff5a36;
+	/* "Did a good habit" and clean days. */
+	--color-moss: #3ecf8e;
+}
+
+html {
+	color-scheme: dark;
+}
+
+/* Keep content clear of phone notches and home bars. */
+body {
+	padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+		env(safe-area-inset-left);
+}
+
+@layer components {
+	.card {
+		@apply rounded-2xl border border-line bg-panel p-4;
+	}
+	.field {
+		@apply w-full rounded-xl border border-line bg-ink px-3 py-2.5 text-text outline-none placeholder:text-mute focus:border-ember;
+	}
+	.btn {
+		@apply rounded-xl bg-ember px-4 py-2.5 font-semibold text-ink transition active:scale-95 disabled:opacity-50;
+	}
+	.btn-quiet {
+		@apply rounded-xl border border-line px-4 py-2.5 text-text transition active:scale-95 disabled:opacity-50;
+	}
+}

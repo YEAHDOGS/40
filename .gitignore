@@ -1,31 +1,25 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
 node_modules
-dist
-dist-ssr
-*.local
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Generated
+/.svelte-kit
+/dist
+.wrangler
 
-/src/generated/prisma
-
-# Prisma and Local Database
-*.db
-*.db-journal
+# Local settings and secrets (copy .env.example to .env)
 .env
+.env.*
+!.env.example
+
+# Signing material: never commit
+*.p8
+*.p12
+*.jks
+*.keystore
+*.mobileprovision
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vite
+vite.config.js.timestamp-*

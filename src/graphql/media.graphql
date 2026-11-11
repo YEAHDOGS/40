@@ -1,7 +1,0 @@
-extend type Media {
-	alt: String
-	thumbnail: String
-	duration: Int
-	width: Int
-	height: Int
-}
