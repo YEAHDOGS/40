@@ -96,7 +96,7 @@
         {:else}
           {@const tracked = logs[day]}
           <button
-            class="flex aspect-square flex-col items-center justify-center gap-1 text-sm disabled:opacity-30
+            class="flex h-12 flex-col sm:h-14 items-center justify-center gap-1 text-sm disabled:opacity-30
               {tracked ? 'bg-raise' : ''}
               {day === selected ? 'ring-2 ring-ember' : ''}
               {day === NOW ? 'font-black text-ember' : tracked ? 'text-text' : 'text-mute'}"
