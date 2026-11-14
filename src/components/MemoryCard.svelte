@@ -1,28 +1,40 @@
 <script>
-  // One imported memory: a post from X or a Google Keep note or list. Search words are highlighted.
+  // One imported memory: a post from X or a Google Keep note or list. Search words are highlighted. A reply
+  // shows what it answered when that is known, and links to its whole thread.
   import { isTauri } from '@tauri-apps/api/core';
   import Check from '@lucide/svelte/icons/check';
+  import GitBranch from '@lucide/svelte/icons/git-branch';
   import Heart from '@lucide/svelte/icons/heart';
-  import ImageOff from '@lucide/svelte/icons/image-off';
-  import Play from '@lucide/svelte/icons/play';
   import Repeat2 from '@lucide/svelte/icons/repeat-2';
   import { SOURCES } from '#lib/memories.js';
+  import { href } from '#lib/router.svelte.js';
+  import MemoryMedia from './MemoryMedia.svelte';
   import { highlight } from '../views/memories/browse.js';
+  import { memories } from '../views/memories/state.svelte.js';
+  import { countBelow, parentId, rootOf, threadIndex } from '../views/memories/threads.js';
 
   // One of each kind (src/lib/memories.js KINDS holds the plurals for the filters).
   const KIND_NAMES = { tweet: 'Post', reply: 'Reply', retweet: 'Repost', quote: 'Quote', note: 'Note', list: 'List' };
-  const MAX_MEDIA = 4;
   const MAX_STAGGER = 12;
   const STAGGER_MS = 30;
   const DATE_FORMAT = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
   // The packaged apps have no way to open a browser tab yet, so outside links show on the web only.
   const CAN_OPEN_LINKS = !isTauri();
 
-  /** @type {{ memory: any, words?: string[], index?: number }} */
-  let { memory, words = [], index = 0 } = $props();
+  /**
+   * inThread: drawn inside a thread, where the parent is already above it. linked: draws the spine up to
+   * the card above.
+   * @type {{ memory: any, words?: string[], index?: number, focus?: boolean, inThread?: boolean, linked?: boolean }}
+   */
+  let { memory, words = [], index = 0, focus = false, inThread = false, linked = false } = $props();
 
-  const media = $derived((memory.media ?? []).filter((m) => m.thumb).slice(0, MAX_MEDIA));
-  let broken = $state([]);
+  const threads = $derived(threadIndex(memories.list));
+  const parent = $derived(parentId(memory) ? threads.byId.get(parentId(memory)) : null);
+  // Someone else's post: its text is known only if you liked it.
+  const answered = $derived(!parent && memory.parent ? memories.context.get(memory.parent) : null);
+  const threadSize = $derived(
+    memory.source === 'x' ? countBelow(threads, rootOf(threads, memory)) : 0
+  );
 </script>
 
 {#snippet marked(text)}
@@ -32,18 +44,30 @@
 {/snippet}
 
 <article
-  class="card rise {memory.source === 'keep' ? 'border-l-4 border-l-moss' : ''}"
+  class="card rise {memory.source === 'keep' ? 'border-l-4 border-l-moss' : ''} {focus ? 'ring-2 ring-ember' : ''}
+    {linked ? 'spine' : ''}"
   style="--rise-delay: {Math.min(index, MAX_STAGGER) * STAGGER_MS}ms"
+  id="memory-{memory.id}"
 >
-  <div class="flex items-center gap-2 font-mono text-xs uppercase">
+  <div class="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs uppercase">
     <span class="border border-line px-1.5 py-0.5 text-moss">{SOURCES[memory.source]?.short}</span>
     <span class="text-mute">{KIND_NAMES[memory.kind] ?? memory.kind}</span>
+    {#if memory.deleted}<span class="border border-ember px-1.5 py-0.5 text-ember">Deleted</span>{/if}
     <time class="ml-auto text-right text-ember" datetime={new Date(memory.at).toISOString()}>
       {new Date(memory.at).toLocaleString(undefined, DATE_FORMAT)}
     </time>
   </div>
 
-  {#if memory.replyTo}<p class="mt-2 text-xs text-mute">replying to @{memory.replyTo}</p>{/if}
+  {#if !inThread && (parent || answered)}
+    <blockquote class="mt-2 border-l-2 border-line pl-3 text-sm text-mute">
+      <span class="label block">
+        {parent ? 'Replying to your post' : `Replying to @${memory.replyTo} (a post you liked)`}
+      </span>
+      <span class="line-clamp-3 break-words whitespace-pre-wrap">{parent ? parent.text : answered}</span>
+    </blockquote>
+  {:else if memory.replyTo && !inThread}
+    <p class="mt-2 text-xs text-mute">replying to @{memory.replyTo}</p>
+  {/if}
   {#if memory.title}<h3 class="mt-2 text-base">{@render marked(memory.title)}</h3>{/if}
   {#if memory.text}
     <p class="mt-2 break-words whitespace-pre-wrap">{@render marked(memory.text)}</p>
@@ -62,53 +86,27 @@
     </ul>
   {/if}
 
-  {#if media.length}
-    <div class="mt-3 grid gap-1 {media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}">
-      {#each media as item, i (i)}
-        <div class="relative overflow-hidden border border-line bg-ink {broken.includes(i) ? '' : 'aspect-video'}">
-          {#if broken.includes(i)}
-            <!-- X no longer serves this file (the post or its media was deleted). -->
-            <span class="label flex items-center justify-center gap-2 py-3">
-              <ImageOff class="h-4 w-4 shrink-0" />{item.type === 'photo' ? 'Photo' : 'Video'} gone from X
-            </span>
-          {:else}
-            <img
-              class="h-full w-full object-cover"
-              src={item.thumb}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              referrerpolicy="no-referrer"
-              onerror={() => (broken = [...broken, i])}
-            />
-            {#if item.type !== 'photo'}
-              <span class="absolute inset-0 flex items-center justify-center">
-                <Play class="h-8 w-8 fill-text text-text drop-shadow" />
-                <span class="sr-only">Video</span>
-              </span>
-            {/if}
-          {/if}
-        </div>
-      {/each}
-    </div>
-  {/if}
+  <MemoryMedia {memory} />
 
-  {#if memory.labels?.length || memory.likes || memory.reposts || (memory.url && CAN_OPEN_LINKS)}
-    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-mute">
-      {#each memory.labels ?? [] as label (label)}
-        <span class="label border border-line px-1.5 py-0.5">{label}</span>
-      {/each}
-      {#if memory.likes}
-        <span class="flex items-center gap-1"><Heart class="h-4 w-4" />{memory.likes}</span>
-      {/if}
-      {#if memory.reposts}
-        <span class="flex items-center gap-1"><Repeat2 class="h-4 w-4" />{memory.reposts}</span>
-      {/if}
-      {#if memory.url && CAN_OPEN_LINKS}
-        <a class="ml-auto underline" href={memory.url} target="_blank" rel="noopener noreferrer">
-          Open on {SOURCES[memory.source]?.short}
-        </a>
-      {/if}
-    </div>
-  {/if}
+  <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-mute empty:hidden">
+    {#each memory.labels ?? [] as label (label)}
+      <span class="label border border-line px-1.5 py-0.5">{label}</span>
+    {/each}
+    {#if memory.likes}
+      <span class="flex items-center gap-1"><Heart class="h-4 w-4" />{memory.likes}</span>
+    {/if}
+    {#if memory.reposts}
+      <span class="flex items-center gap-1"><Repeat2 class="h-4 w-4" />{memory.reposts}</span>
+    {/if}
+    {#if threadSize && !inThread}
+      <a class="flex items-center gap-1 text-moss underline" href={href('memories', `thread/${memory.id}`)}>
+        <GitBranch class="h-4 w-4" />Thread of {threadSize + 1}
+      </a>
+    {/if}
+    {#if memory.url && CAN_OPEN_LINKS}
+      <a class="ml-auto underline" href={memory.url} target="_blank" rel="noopener noreferrer">
+        Open on {SOURCES[memory.source]?.short}
+      </a>
+    {/if}
+  </div>
 </article>

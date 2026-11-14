@@ -6,14 +6,22 @@
 //   id: 'x:<tweet id>' | 'keep:<created usec>', source: 'x' | 'keep',
 //   kind: 'tweet' | 'reply' | 'retweet' | 'quote' | 'note' | 'list',
 //   at: unix ms, md: 'MM-DD' (local day, for "on this day"), text,
-//   title?, items?: [{ text, done }], labels?: string[], replyTo?, likes?, reposts?,
-//   media?: [{ type, thumb }], url?, rich: whether it came from a full export (a CSV row is not rich)
+//   title?, items?: [{ text, done }], labels?: string[], replyTo?, parent?: id of the post it replies to,
+//   likes?, reposts?, deleted?: removed from X before the export, media?: [{ type, thumb }] (online copies),
+//   files?: [{ archive, name, local, compressed, method, encrypted }] (the copies inside an archive .zip),
+//   url?, rich: whether it came from a full export (a CSV row is not rich)
 // }
+//
+// Two side stores: ARCHIVES remembers archive .zip files that hold photos and videos ({ key, name, size,
+// handle? }: the handle lets Chromium browsers reopen the file next time), and CONTEXT keeps the text of
+// other people's posts that a reply answers, when the archive has it ({ id, text }, from the likes list).
 import { ymd } from './dates.js';
 
 const DB_PREFIX = 'forty-memories-';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = 'memories';
+const ARCHIVES = 'archives';
+const CONTEXT = 'context';
 const BY_DAY = 'md';
 const BY_SOURCE = 'source';
 const LEAP_DAY = '02-29';
@@ -58,19 +66,27 @@ function open(user) {
   if (opened?.user === user) return opened.db;
   cache = null;
   const request = indexedDB.open(DB_PREFIX + user, DB_VERSION);
-  request.onupgradeneeded = () => {
-    const store = request.result.createObjectStore(STORE, { keyPath: 'id' });
-    store.createIndex(BY_DAY, BY_DAY);
-    store.createIndex(BY_SOURCE, BY_SOURCE);
+  request.onupgradeneeded = (event) => {
+    const db = request.result;
+    if (event.oldVersion < 1) {
+      const store = db.createObjectStore(STORE, { keyPath: 'id' });
+      store.createIndex(BY_DAY, BY_DAY);
+      store.createIndex(BY_SOURCE, BY_SOURCE);
+    }
+    if (event.oldVersion < 2) {
+      db.createObjectStore(ARCHIVES, { keyPath: 'key' });
+      db.createObjectStore(CONTEXT, { keyPath: 'id' });
+    }
   };
   opened = { user, db: settle(request) };
   return opened.db;
 }
 
-async function tx(user, mode) {
+/** @param {string} user @param {IDBTransactionMode} mode @param {string | string[]} [name] store(s) */
+async function tx(user, mode, name = STORE) {
   const db = await open(user);
-  const t = db.transaction(STORE, mode);
-  return { t, store: t.objectStore(STORE) };
+  const t = db.transaction(name, mode);
+  return { t, store: Array.isArray(name) ? null : t.objectStore(name) };
 }
 
 /** The local day of a time as 'MM-DD'. @param {number} at */
@@ -137,6 +153,12 @@ export async function saveMemories(user, memories) {
 
 /** Deletes every memory from one source. @param {string} user @param {string} source */
 export async function removeSource(user, source) {
+  if (source === 'x') {
+    const { t: side } = await tx(user, 'readwrite', [ARCHIVES, CONTEXT]);
+    side.objectStore(ARCHIVES).clear();
+    side.objectStore(CONTEXT).clear();
+    await settle(side);
+  }
   const { t, store } = await tx(user, 'readwrite');
   const cursor = store.index(BY_SOURCE).openKeyCursor(IDBKeyRange.only(source));
   let removed = 0;
@@ -149,4 +171,17 @@ export async function removeSource(user, source) {
   await settle(t);
   cache = null;
   return removed;
+}
+
+/** Every side record of one kind: 'archives' or 'context'. @param {string} user @param {'archives' | 'context'} name */
+export async function allOf(user, name) {
+  const { store } = await tx(user, 'readonly', name);
+  return settle(store.getAll());
+}
+
+/** Saves side records (archives or context), replacing any with the same key. */
+export async function saveAll(user, name, records) {
+  const { t, store } = await tx(user, 'readwrite', name);
+  for (const record of records) store.put(record);
+  await settle(t);
 }

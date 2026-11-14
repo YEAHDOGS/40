@@ -23,6 +23,9 @@ const FLAG_ENCRYPTED = 1;
 const UTF8 = new TextDecoder();
 const BACKSLASH = '\\';
 
+/** Identifies an archive by name and size, so picking the same file again matches. @param {{ name: string, size: number }} file */
+export const archiveKey = (file) => `${file.name}:${file.size}`;
+
 /** Whether this browser can unpack deflated zip entries. */
 export function canUnzip() {
   try {
@@ -114,13 +117,16 @@ export async function listZip(file) {
   return entries;
 }
 
-/** Unpacks one entry as text. @param {Blob} file @param {Awaited<ReturnType<typeof listZip>>[number]} entry */
-export async function readZipText(file, entry) {
+/**
+ * Unpacks one entry, as a Response to read with .text() or .blob(). Stored entries are sliced, never copied.
+ * @param {Blob} file @param {{ name: string, method: number, encrypted: boolean, compressed: number, local: number }} entry
+ */
+export async function readZip(file, entry) {
   if (entry.encrypted) throw new Error(`${entry.name} is password protected.`);
   const head = await view(file, entry.local, entry.local + LOCAL_HEADER_SIZE);
   const start = entry.local + LOCAL_HEADER_SIZE + head.getUint16(26, true) + head.getUint16(28, true);
   const data = file.slice(start, start + entry.compressed);
-  if (entry.method === METHOD_STORED) return data.text();
+  if (entry.method === METHOD_STORED) return new Response(data);
   if (entry.method !== METHOD_DEFLATE) throw new Error(`Cannot unpack ${entry.name}.`);
-  return new Response(data.stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  return new Response(data.stream().pipeThrough(new DecompressionStream('deflate-raw')));
 }

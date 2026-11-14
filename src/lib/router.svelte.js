@@ -3,8 +3,9 @@
 const HOME = 'track';
 
 function parse() {
-  const [name = '', param = ''] = location.hash.replace(/^#\/?/, '').split('/');
-  return { name: name || HOME, param: decodeURIComponent(param) };
+  // Everything after the screen name is its param, slashes included (#/memories/thread/x:1).
+  const [name = '', ...rest] = location.hash.replace(/^#\/?/, '').split('/');
+  return { name: name || HOME, param: decodeURIComponent(rest.join('/')) };
 }
 
 /** The current screen: { name: 'track' | 'stats' | 'feed' | 'memories' | 'post' | 'person' | 'you', param }. */
