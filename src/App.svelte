@@ -2,6 +2,7 @@
   // The shell from the original 40 build: nav rail on the left, the wipe clock on the right,
   // a bottom bar with a raised centre button on phones.
   import Activity from '@lucide/svelte/icons/activity';
+  import BookHeart from '@lucide/svelte/icons/book-heart';
   import CalendarCheck from '@lucide/svelte/icons/calendar-check';
   import MessageSquare from '@lucide/svelte/icons/message-square';
   import SquareTerminal from '@lucide/svelte/icons/square-terminal';
@@ -11,22 +12,26 @@
   import { WIPE_HABITS_COPY, app, loadSession } from '#lib/app.svelte.js';
   import { href, route } from '#lib/router.svelte.js';
   import Feed from './views/Feed.svelte';
+  import Memories from './views/Memories.svelte';
   import Person from './views/Person.svelte';
   import Post from './views/Post.svelte';
   import Stats from './views/Stats.svelte';
   import Track from './views/Track.svelte';
   import You from './views/You.svelte';
 
-  const VIEWS = { track: Track, stats: Stats, feed: Feed, post: Post, person: Person, you: You };
+  const VIEWS = { track: Track, stats: Stats, feed: Feed, memories: Memories, post: Post, person: Person, you: You };
   // [route, label, icon, other routes that light the same tab]
   const TABS = [
     ['track', 'Track', CalendarCheck, []],
     ['stats', 'Stats', Activity, []],
     ['feed', 'Feed', MessageSquare, ['post', 'person']],
+    ['memories', 'Memories', BookHeart, []],
     ['you', 'Entity', User, []],
   ];
-  // The raised button sits in the middle of the phone bar.
+  // Phones: the raised centre button is the feed, so the bar holds the other tabs, split around it.
+  const PHONE_TABS = TABS.filter(([name]) => name !== 'feed');
   const PHONE_SPLIT = 2;
+  const FEED_ROUTES = ['feed', 'post', 'person'];
   const ICON_STROKE_ACTIVE = 2.5;
   const ICON_STROKE = 1.5;
 
@@ -116,6 +121,7 @@
         <p class="text-mute">Posts, comments <span class="float-right text-ember">Deleted</span></p>
         <p class="text-mute">Profiles, follows <span class="float-right text-moss">Kept</span></p>
         <p class="text-mute">Your records <span class="float-right text-text">Your call</span></p>
+        <p class="text-mute">Memories <span class="float-right text-moss">This device</span></p>
         <p class="border-t border-line pt-2 normal-case text-mute">{WIPE_HABITS_COPY[app.wipeHabits]}</p>
       </div>
       <p class="label px-4 text-center">40 // DOGS © 2026</p>
@@ -124,14 +130,16 @@
 
   <!-- Phone bottom bar -->
   <nav class="fixed inset-x-0 bottom-0 z-50 flex items-center border-t border-line bg-ink p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
-    {#each TABS.slice(0, PHONE_SPLIT) as tab (tab[0])}{@render phoneTab(tab)}{/each}
+    {#each PHONE_TABS.slice(0, PHONE_SPLIT) as tab (tab[0])}{@render phoneTab(tab)}{/each}
     <a
       href={href('feed')}
-      class="-mt-8 flex h-12 w-12 shrink-0 items-center justify-center border-2 border-ink bg-ember text-ink shadow-[4px_4px_0_0_var(--color-moss)]"
-      aria-label="Write a post"
+      class="-mt-8 flex h-12 w-12 shrink-0 items-center justify-center border-2 bg-ember text-ink shadow-[4px_4px_0_0_var(--color-moss)] transition-transform duration-150 active:scale-90
+        {FEED_ROUTES.includes(route.name) ? 'border-moss' : 'border-ink'}"
+      aria-label="Feed: write a post"
+      aria-current={FEED_ROUTES.includes(route.name) ? 'page' : undefined}
     >
       <SquareTerminal class="h-5 w-5" />
     </a>
-    {#each TABS.slice(PHONE_SPLIT) as tab (tab[0])}{@render phoneTab(tab)}{/each}
+    {#each PHONE_TABS.slice(PHONE_SPLIT) as tab (tab[0])}{@render phoneTab(tab)}{/each}
   </nav>
 {/if}

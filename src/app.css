@@ -77,6 +77,11 @@
     animation: glitch 3s infinite alternate-reverse;
   }
 
+  /* Toggle chips: the kind filters on Memories. */
+  .chip {
+    @apply border px-3 py-1 font-mono text-xs uppercase tracking-widest transition-all duration-150 active:scale-95;
+  }
+
   /* Hover glow only where there is a real pointer; on touch screens it would stick. */
   @media (hover: hover) {
     .card:hover {
@@ -99,6 +104,26 @@
   2% { text-shadow: -2px 0 0 var(--color-ember), 2px 0 0 var(--color-moss); }
 }
 
+/* Memories: cards rise in one after another (each sets --rise-delay), a new day slides in from the side
+   it came from (--slide-from), and the tab indicator springs between tabs. */
+.rise { animation: rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--rise-delay, 0ms) both; }
+.day-slide { animation: day-slide 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.tab-slide {
+  animation: tab-slide 200ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  transition: transform 200ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+}
+@keyframes tab-slide {
+  from { transform: translateX(var(--slide-from, 0)); }
+}
+@keyframes day-slide {
+  from { opacity: 0; transform: translateX(var(--slide-from, 0)); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .text-glitch { animation: none; }
+  .text-glitch, .rise, .day-slide, .tab-slide { animation: none; }
+  .tab-slide { transition: none; }
 }

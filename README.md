@@ -13,6 +13,10 @@ _Made by DOGS._
 - **The feed**: posts, comments and shared records ("75 days in a row").
 - **The wipe**: every 40 days all posts and comments are deleted, for everyone. Accounts, profiles and
   follows stay. Each person chooses whether their own habits and tracked days are kept or deleted too.
+- **Memories**: import your X / Twitter archive (the .zip, `data/tweets.js`, or a `tweets.csv`) or a
+  Google Keep Takeout. Every day shows what you posted on that date in every year, and everything is
+  searchable and sortable. Imports are read and stored on the device only (IndexedDB, one database per
+  account): never uploaded, never posted, never wiped, and no load on the free tier.
 
 ## Stack
 

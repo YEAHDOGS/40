@@ -15,6 +15,7 @@ Rules for every AI agent working in this repository.
 - **Wiped for everyone when a 40-day cycle ends, no matter what**: posts, comments, and any future public content (likes, reposts). Add each new public table to `WIPED_TABLES` in `api/lib/cycle.js`. Reads must also filter by the current cycle (`getCycle`), so nothing from an ended cycle is served even if the cron is late.
 - **Kept**: accounts, profiles and bios, follows, private messages.
 - **Each person chooses** (`profile.wipeHabits`): keep their habits and tracked days, delete the tracked days, or delete both.
+- **Memories** (imports from X, Google Keep and future networks) live only in IndexedDB on the device (`src/lib/memories.js`). Never send them to the API or D1.
 - **Privacy**: a habit is private, friends-only or public. Private habits are never read for anyone else, not even inside anonymous comparisons. A sign-in provider's real name and photo are never copied onto an account.
 
 ## Layout

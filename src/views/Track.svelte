@@ -2,6 +2,7 @@
   import { api } from '#lib/api.js';
   import { KIND_COPY, app } from '#lib/app.svelte.js';
   import HabitForm from '../components/HabitForm.svelte';
+  import OnThisDay from '../components/OnThisDay.svelte';
   import { dayLabel, monthCells, monthLabel, monthOf, shiftMonth, today } from '#lib/dates.js';
 
   const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -62,6 +63,8 @@
     }
   }
 </script>
+
+<OnThisDay />
 
 {#if !app.habits.length}
   <section class="card mt-4">

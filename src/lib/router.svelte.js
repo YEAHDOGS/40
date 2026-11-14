@@ -7,7 +7,7 @@ function parse() {
   return { name: name || HOME, param: decodeURIComponent(param) };
 }
 
-/** The current screen: { name: 'track' | 'stats' | 'feed' | 'post' | 'person' | 'you', param }. */
+/** The current screen: { name: 'track' | 'stats' | 'feed' | 'memories' | 'post' | 'person' | 'you', param }. */
 export const route = $state(parse());
 
 addEventListener('hashchange', () => {
