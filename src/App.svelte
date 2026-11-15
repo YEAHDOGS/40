@@ -121,7 +121,7 @@
         <p class="text-mute">Posts, comments <span class="float-right text-ember">Deleted</span></p>
         <p class="text-mute">Profiles, follows <span class="float-right text-moss">Kept</span></p>
         <p class="text-mute">Your records <span class="float-right text-text">Your call</span></p>
-        <p class="text-mute">Memories <span class="float-right text-moss">This device</span></p>
+        <p class="text-mute">Memories <span class="float-right text-moss">Kept</span></p>
         <p class="border-t border-line pt-2 normal-case text-mute">{WIPE_HABITS_COPY[app.wipeHabits]}</p>
       </div>
       <p class="label px-4 text-center">40 // DOGS © 2026</p>

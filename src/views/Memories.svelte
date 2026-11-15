@@ -1,7 +1,7 @@
 <script>
   // Memories: posts and notes imported from other networks. On this day across the years, a timeline of
-  // threads, greatest hits, stats, search, and the import screen. Kept on this device only
-  // (src/lib/memories.js); never posted and never wiped.
+  // threads, greatest hits, stats, search, and the import screen. Kept on this device (src/lib/memories.js),
+  // with an opt-in text backup to the account (memories/backup.svelte.js); never posted and never wiped.
   //
   // Routes: #/memories[/<tab>[/<more>]], e.g. #/memories/timeline/2025-02, #/memories/thread/x:123.
   import { onMount } from 'svelte';
@@ -16,6 +16,7 @@
   import Thread from './memories/Thread.svelte';
   import Timeline from './memories/Timeline.svelte';
   import Today from './memories/Today.svelte';
+  import { checkBackup } from './memories/backup.svelte.js';
   import { memories, prefs, toggleKind } from './memories/state.svelte.js';
 
   // [route segment, label, screen, shows the kind filters]
@@ -48,6 +49,8 @@
 
   onMount(() => {
     memories.load(app.user.id).catch((err) => (error = err?.message || 'Cannot open memories here.'));
+    // One request a session: whether the account has a text backup to show or restore.
+    checkBackup(app.user.id);
   });
 </script>
 
