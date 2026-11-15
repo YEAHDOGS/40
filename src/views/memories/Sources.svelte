@@ -4,6 +4,8 @@
   import { app } from '#lib/app.svelte.js';
   import { connectArchives } from '#lib/archive.svelte.js';
   import { SOURCES, removeSource, saveAll, saveMemories } from '#lib/memories.js';
+  import BackupCard from './BackupCard.svelte';
+  import { forgetSource, keepBackedUp } from './backup.svelte.js';
   import { readExports } from './import.js';
   import { memories } from './state.svelte.js';
 
@@ -61,6 +63,7 @@
         const media = found.memories.reduce((n, m) => n + (m.files?.length ?? 0), 0);
         status = `Read ${found.memories.length.toLocaleString()}: ${added.toLocaleString()} new` +
           (media ? `, ${media.toLocaleString()} photos and videos linked.` : '.');
+        await keepBackedUp(app.user.id);
       } else {
         status = '';
       }
@@ -72,7 +75,13 @@
   }
 
   async function remove(source) {
-    if (!confirm(`Remove every ${SOURCES[source].name} memory from this device?`)) return;
+    if (!confirm(`Remove every ${SOURCES[source].name} memory from this device and from your backup?`)) return;
+    try {
+      await forgetSource(app.user.id, source);
+    } catch (err) {
+      problems = [err?.message || 'The backup could not be changed, so nothing was removed. Try again.'];
+      return;
+    }
     await removeSource(app.user.id, source);
     await memories.load(app.user.id);
     status = `Removed ${SOURCES[source].name}.`;
@@ -106,6 +115,8 @@
 
   const range = (at) => new Date(at).toLocaleDateString(undefined, RANGE_FORMAT);
 </script>
+
+<BackupCard />
 
 <label
   class="card mt-3 flex cursor-pointer flex-col items-center gap-2 border-dashed py-8 text-center transition-transform duration-150
@@ -145,8 +156,9 @@
 </div>
 
 <p class="mt-3 text-sm text-mute">
-  Imports are read and kept on this device only. Nothing is uploaded, posted, or wiped by the 40-day
-  cycle. Import the same file again any time: nothing is doubled.
+  Imports are read and kept on this device. Nothing is uploaded unless you back up the text, photos and
+  videos never are, and nothing is posted or wiped by the 40-day cycle. Import the same file again any
+  time: nothing is doubled.
 </p>
 
 <div class="mt-3 grid gap-3 sm:grid-cols-2">

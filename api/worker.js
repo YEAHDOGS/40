@@ -1,5 +1,6 @@
 // Cloudflare Worker: /api/* backend. Everything else is the static app in dist/. Created by DOGS.
 import { HttpError, ROUTES } from './lib/routes.js';
+import { MEMORY_ROUTES } from './lib/memories.js';
 import { allowedOrigins, createAuth, enabledProviders } from './lib/auth.js';
 import { wipeIfDue } from './lib/cycle.js';
 import { check, meter, settle } from './lib/limits.js';
@@ -7,6 +8,8 @@ import { DEMO_EMAIL, isPreview, signUpBlocked } from './lib/preview.js';
 import pkg from '../package.json' with { type: 'json' };
 
 const MAX_BODY_BYTES = 16_384;
+// [method, path with :params, handler, largest body accepted (optional)]
+const ALL_ROUTES = [...ROUTES, ...MEMORY_ROUTES];
 
 const json = (data, status = 200) => Response.json(data, { status });
 
@@ -37,10 +40,11 @@ function matchPath(pattern, pathname) {
   return params;
 }
 
-async function readBody(req) {
+async function readBody(req, maxBytes = MAX_BODY_BYTES) {
   if (req.method === 'GET' || req.method === 'DELETE') return {};
+  if (Number(req.headers.get('Content-Length')) > maxBytes) throw new HttpError(413, 'request too large');
   const raw = await req.text();
-  if (raw.length > MAX_BODY_BYTES) throw new HttpError(413, 'request too large');
+  if (raw.length > maxBytes) throw new HttpError(413, 'request too large');
   try {
     const body = raw ? JSON.parse(raw) : {};
     return body && typeof body === 'object' ? body : {};
@@ -63,10 +67,10 @@ async function route(req, env) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session) return json({ error: 'unauthorized' }, 401);
 
-  for (const [method, pattern, handler] of ROUTES) {
+  for (const [method, pattern, handler, maxBody] of ALL_ROUTES) {
     const params = method === req.method ? matchPath(pattern, pathname) : null;
     if (!params) continue;
-    const body = await readBody(req);
+    const body = await readBody(req, maxBody);
     return json(await handler({ env, user: session.user, params, url, body }));
   }
   return json({ error: 'not found' }, 404);

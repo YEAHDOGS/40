@@ -1,6 +1,7 @@
-// Memories: things imported from other networks (X, Google Keep), kept in IndexedDB on this device only.
-// Nothing here is sent to the API, posted, or touched by the 40-day wipe. Each account on a device gets its
-// own database, so signing in as someone else never shows your memories.
+// Memories: things imported from other networks (X, Google Keep), kept in IndexedDB on this device. Their
+// text goes to the account only if the person turns on the backup (src/views/memories/backup.svelte.js);
+// photos and videos never do. Nothing here is posted or touched by the 40-day wipe. Each account on a
+// device gets its own database, so signing in as someone else never shows your memories.
 //
 // A memory: {
 //   id: 'x:<tweet id>' | 'keep:<created usec>', source: 'x' | 'keep',
@@ -89,6 +90,17 @@ async function tx(user, mode, name = STORE) {
   return { t, store: Array.isArray(name) ? null : t.objectStore(name) };
 }
 
+/** Adds a record unless its key exists. add() refuses a key that exists; that is swallowed so the rest of the
+ * transaction carries on. @param {IDBObjectStore} store @param {any} record */
+function addOnly(store, record) {
+  const request = store.add(record);
+  request.onerror = (event) => {
+    if (request.error?.name !== CONSTRAINT_ERROR) return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+}
+
 /** The local day of a time as 'MM-DD'. @param {number} at */
 export const monthDay = (at) => ymd(new Date(at)).slice(5);
 
@@ -134,13 +146,7 @@ export async function saveMemories(user, memories) {
       store.put(memory);
       continue;
     }
-    // add() refuses a key that exists; swallow that so the rest of the transaction carries on.
-    const request = store.add(memory);
-    request.onerror = (event) => {
-      if (request.error?.name !== CONSTRAINT_ERROR) return;
-      event.preventDefault();
-      event.stopPropagation();
-    };
+    addOnly(store, memory);
   }
   const after = settle(store.count());
   await settle(t);
@@ -149,6 +155,24 @@ export async function saveMemories(user, memories) {
   navigator.storage?.persist?.().catch(() => {});
   const total = await after;
   return { added: total - (await before), total };
+}
+
+/**
+ * Adds memories and reply context from the account backup, keeping every record this device already has
+ * (they may carry media the backup leaves out). @param {string} user @param {any[]} list @param {any[]} context
+ * @returns {Promise<number>} how many memories were new here
+ */
+export async function addMissing(user, list, context) {
+  const { t } = await tx(user, 'readwrite', [STORE, CONTEXT]);
+  const store = t.objectStore(STORE);
+  const before = settle(store.count());
+  for (const memory of list) addOnly(store, { ...memory, md: monthDay(memory.at) });
+  for (const record of context) addOnly(t.objectStore(CONTEXT), record);
+  const after = settle(store.count());
+  await settle(t);
+  cache = null;
+  navigator.storage?.persist?.().catch(() => {});
+  return (await after) - (await before);
 }
 
 /** Deletes every memory from one source. @param {string} user @param {string} source */

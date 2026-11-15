@@ -17,8 +17,10 @@ _Made by DOGS._
   or a `tweets.csv`) or a Google Keep Takeout. On this day across the years; a timeline where your
   threads and reply chains read as branching trees; greatest hits; stats (streaks, busiest days, when
   you post, what gets engagement); search and sort. Photos and videos are read straight out of the
-  archive .zip when it is open, never copied. Everything is stored on the device only (IndexedDB, one
-  database per account): never uploaded, never posted, never wiped, and no load on the free tier.
+  archive .zip when it is open, never copied. Everything is stored on the device (IndexedDB, one
+  database per account), never posted and never wiped. An opt-in backup keeps the text (never media)
+  with the account, so another device can restore it: posts are packed by month into gzip-compressed
+  chunks, at most 100 D1 rows and 10 MB per person, and a sync sends only the months that changed.
 
 ## Stack
 
