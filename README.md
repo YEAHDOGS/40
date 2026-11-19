@@ -73,6 +73,11 @@ the new schema during a deploy.
 
 ## Sign-in providers
 
+Sign-in is closed while 40 is a work in progress: `SIGN_IN` is `"off"` in `wrangler.jsonc`, so the Worker
+refuses every sign-in and sign-up, and the sign-in screen shows the waitlist instead. The waitlist posts to the
+DOGS API Worker (`api.dogs.red/waitlist`), which keeps the addresses in its own D1 database. Set `SIGN_IN` to
+`"on"` to open the doors. Previews stay open, so the demo account still works there.
+
 Email and password always work. Each provider turns on by itself once its secrets exist
 (`npx wrangler secret put <NAME>`); register `https://40.dogs.red/api/auth/callback/<provider>` as the
 redirect URL.

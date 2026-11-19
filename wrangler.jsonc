@@ -33,7 +33,10 @@
     // Free-tier guard (api/lib/limits.js). "off" removes every limit: only do that on a paid plan.
     "FREE_TIER_GUARD": "on",
     // The fraction of the account's free daily allowance this Worker may use (other Workers share it).
-    "FREE_TIER_SHARE": "0.33"
+    "FREE_TIER_SHARE": "0.33",
+    // "off" while 40 is a work in progress: nobody can sign in or make an account, and the sign-in screen
+    // shows the waitlist instead (api/worker.js). Set to "on" to open the doors.
+    "SIGN_IN": "off"
   },
   // Worker Previews: every pull request branch gets its own Preview (`npx wrangler preview`, run by Workers Builds
   // through scripts/preview.js). Previews never inherit the production bindings above: they run on the staging
@@ -42,7 +45,7 @@
     "d1_databases": [
       { "binding": "DB", "database_name": "forty-staging", "database_id": "bb04ce85-a410-4c96-b7f0-c7fc4d95b895", "migrations_dir": "api/migrations" }
     ],
-    "vars": { "ALLOWED_ORIGINS": "", "FREE_TIER_GUARD": "on", "FREE_TIER_SHARE": "0.05" }
+    "vars": { "ALLOWED_ORIGINS": "", "FREE_TIER_GUARD": "on", "FREE_TIER_SHARE": "0.05", "SIGN_IN": "on" }
   },
   "env": {
     // The handle for staging from the command line (`--env preview`): migrations and the seeder use it.
@@ -56,7 +59,7 @@
         { "binding": "DB", "database_name": "forty-staging", "database_id": "bb04ce85-a410-4c96-b7f0-c7fc4d95b895", "migrations_dir": "api/migrations" }
       ],
       "triggers": { "crons": [] },
-      "vars": { "ALLOWED_ORIGINS": "", "FREE_TIER_GUARD": "on", "FREE_TIER_SHARE": "0.05" }
+      "vars": { "ALLOWED_ORIGINS": "", "FREE_TIER_GUARD": "on", "FREE_TIER_SHARE": "0.05", "SIGN_IN": "on" }
     }
   }
   // Secrets (never in this file). Production: BETTER_AUTH_SECRET (npx wrangler secret put BETTER_AUTH_SECRET).

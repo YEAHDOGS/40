@@ -3,6 +3,7 @@
   import { api } from '#lib/api.js';
   import { loadSession } from '#lib/app.svelte.js';
   import { authClient } from '#lib/auth.js';
+  import Waitlist from './Waitlist.svelte';
 
   const MIN_PASSWORD = 8;
 
@@ -16,6 +17,8 @@
   let demoEmail = $state('');
   // Providers with credentials on the server. Web only: they refuse to run inside an app's webview.
   let providers = $state([]);
+  // null until the server answers. false: 40 is a work in progress, so this screen is the waitlist.
+  let signIn = $state(null);
 
   const PROVIDER_NAMES = { google: 'Google', apple: 'Apple', facebook: 'Facebook' };
 
@@ -23,8 +26,9 @@
     .then((health) => {
       demoEmail = health.demoEmail || '';
       providers = isTauri() ? [] : health.providers || [];
+      signIn = health.signIn !== false;
     })
-    .catch(() => {});
+    .catch(() => (signIn = false));
 
   async function social(provider) {
     error = '';
@@ -60,7 +64,15 @@
     </p>
   </div>
 
-  {#if demoEmail}
+  {#if signIn === null}
+    <p class="label text-center" aria-live="polite">&gt; Connecting</p>
+  {:else if !signIn}
+    <div class="card flex flex-col gap-3">
+      <p class="font-mono text-sm uppercase text-ember">&gt; Work in progress</p>
+      <p class="text-sm text-mute">40 is still being built, so sign-in is closed for now.</p>
+      <Waitlist />
+    </div>
+  {:else if demoEmail}
     <form class="card flex flex-col gap-3" onsubmit={submit}>
       <p class="text-sm text-mute">This is the preview. Everything in it is dummy data.</p>
       <!-- svelte-ignore a11y_autofocus -->

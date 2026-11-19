@@ -8,6 +8,11 @@ import { DEMO_EMAIL, isPreview, signUpBlocked } from './lib/preview.js';
 import pkg from '../package.json' with { type: 'json' };
 
 const MAX_BODY_BYTES = 16_384;
+// SIGN_IN = "off" (wrangler.jsonc) closes the doors while 40 is a work in progress: nobody can sign in or
+// make an account, and the sign-in screen shows the waitlist instead. Sessions that already exist keep working.
+const SIGN_IN_OFF = 'off';
+const SIGN_IN_PATHS = ['/api/auth/sign-in', '/api/auth/sign-up', '/api/auth/callback'];
+const SIGN_IN_CLOSED = 'sign-in is closed: 40 is a work in progress';
 // [method, path with :params, handler, largest body accepted (optional)]
 const ALL_ROUTES = [...ROUTES, ...MEMORY_ROUTES];
 
@@ -58,6 +63,8 @@ async function route(req, env) {
   const { pathname } = url;
 
   if (signUpBlocked(env, pathname)) return json({ error: 'sign-up is closed here' }, 403);
+  if (env.SIGN_IN === SIGN_IN_OFF && SIGN_IN_PATHS.some((path) => pathname.startsWith(path)))
+    return json({ error: SIGN_IN_CLOSED, message: SIGN_IN_CLOSED }, 403);
 
   // Better Auth: sign-up, sign-in, sign-out, get-session, ...
   if (pathname.startsWith('/api/auth/')) return (await createAuth(env, req)).handler(req);
@@ -80,12 +87,14 @@ export default {
   async fetch(req, env, ctx) {
     const { pathname } = new URL(req.url);
     if (req.method === 'OPTIONS') return withCors(req, new Response(null, { status: 204 }), env);
-    // No database, no cost. Tells the sign-in screen what it can offer: the demo account on a Preview
+    // No database, no cost. Tells the sign-in screen what it can offer: nothing while sign-in is closed
+    // (it shows the waitlist), the demo account on a Preview
     // (where it is the only way in), otherwise whichever providers have their secrets set.
     if (pathname === '/api/health') {
       const demoEmail = isPreview(env) ? DEMO_EMAIL : null;
-      const providers = demoEmail ? [] : enabledProviders(env);
-      return withCors(req, json({ ok: true, version: pkg.version, demoEmail, providers }), env);
+      const signIn = env.SIGN_IN !== SIGN_IN_OFF;
+      const providers = demoEmail || !signIn ? [] : enabledProviders(env);
+      return withCors(req, json({ ok: true, version: pkg.version, signIn, demoEmail, providers }), env);
     }
     try {
       const refused = await check(req, env);

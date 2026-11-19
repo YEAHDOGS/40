@@ -90,7 +90,64 @@
     });
   }
 
-  /* ---------- notify form: honest localStorage capture ---------- */
+  /* ---------- notify form: the waitlist ----------
+     The address is saved by the DOGS API Worker (api.dogs.red, D1); nothing is emailed yet.
+       POST <API>/waitlist { email, site: "40", token } -> { joined: true }
+     `token` is a Cloudflare Turnstile proof that a person sent it, in invisible mode: no box or
+     puzzle is shown. Its script loads only when the form is submitted, never before. */
+  var WAITLIST_URL = 'https://api.dogs.red/waitlist';
+  var SITE = '40';
+  var TURNSTILE_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  var TURNSTILE_SITE_KEY = '0x4AAAAAAFn0k2xvNoVQuLjj';
+  var TURNSTILE_ACTION = 'waitlist';
+  var TOKEN_TIMEOUT_MS = 15000;
+  var JOINED_KEY = 'forty-waitlist-joined';
+  var JOINED_WORDS = 'You are on the list. One email when the doors open.';
+  var STATUS_WORDS = {
+    400: 'That does not look like an email address.',
+    429: 'Too many tries. Wait a minute.',
+    503: 'Please try again tomorrow.'
+  };
+  var FAILED = 'Could not join. Please try again.';
+
+  var turnstileLoad = null;
+  function loadTurnstile() {
+    if (turnstileLoad) return turnstileLoad;
+    turnstileLoad = new Promise(function (resolve, reject) {
+      var script = document.createElement('script');
+      script.src = TURNSTILE_SCRIPT;
+      script.async = true;
+      script.onload = function () { resolve(window.turnstile); };
+      script.onerror = function () { turnstileLoad = null; reject(new Error('turnstile')); };
+      document.head.appendChild(script);
+    });
+    return turnstileLoad;
+  }
+  // One single-use token. The invisible widget draws nothing but needs an element to live in.
+  function turnstileToken() {
+    return loadTurnstile().then(function (turnstile) {
+      return new Promise(function (resolve, reject) {
+        var host = document.createElement('div');
+        host.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:0;overflow:hidden';
+        document.body.appendChild(host);
+        var widget = null;
+        function finish(settle, value) {
+          clearTimeout(timer);
+          if (widget !== null) turnstile.remove(widget);
+          host.remove();
+          settle(value);
+        }
+        var timer = setTimeout(function () { finish(reject, new Error('turnstile')); }, TOKEN_TIMEOUT_MS);
+        widget = turnstile.render(host, {
+          sitekey: TURNSTILE_SITE_KEY,
+          action: TURNSTILE_ACTION,
+          callback: function (token) { finish(resolve, token); },
+          'error-callback': function () { finish(reject, new Error('turnstile')); return true; }
+        });
+      });
+    });
+  }
+
   var notify = document.querySelector('form[data-notify]');
   if (notify) {
     var email = notify.querySelector('input[type="email"]');
@@ -101,27 +158,40 @@
       error.textContent = msg;
       email.setAttribute('aria-invalid', msg ? 'true' : 'false');
     }
+    function showJoined() {
+      var ok = document.createElement('p');
+      ok.className = 'form-ok';
+      ok.textContent = JOINED_WORDS;
+      notify.replaceWith(ok);
+    }
     email.addEventListener('input', function () { setError(''); });
+
+    // Someone who already joined on this browser sees the thank-you, not an empty form.
+    try { if (localStorage.getItem(JOINED_KEY)) showJoined(); } catch (err) { /* storage is optional */ }
 
     notify.addEventListener('submit', function (e) {
       e.preventDefault();
       var value = email.value.trim().toLowerCase();
       if (!value) { setError('Please enter your email address.'); email.focus(); return; }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        setError('That does not look like an email address.');
+        setError(STATUS_WORDS[400]);
         email.focus();
         return;
       }
       setError('');
-      try {
-        var list = JSON.parse(localStorage.getItem('forty-notify') || '[]');
-        if (list.indexOf(value) === -1) list.push(value);
-        localStorage.setItem('forty-notify', JSON.stringify(list));
-      } catch (err) { /* storage full or blocked: still confirm */ }
-      var ok = document.createElement('p');
-      ok.className = 'form-ok';
-      ok.textContent = 'You are on the list. See you at the next cycle.';
-      notify.replaceWith(ok);
+      button.disabled = true;
+      turnstileToken().then(function (token) {
+        return fetch(WAITLIST_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: value, site: SITE, token: token })
+        });
+      }).then(function (res) {
+        button.disabled = false;
+        if (!res.ok) return setError(STATUS_WORDS[res.status] || FAILED);
+        try { localStorage.setItem(JOINED_KEY, '1'); } catch (err) { /* storage is optional */ }
+        showJoined();
+      }).catch(function () { button.disabled = false; setError(FAILED); });
     });
   }
 })();
