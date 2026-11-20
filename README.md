@@ -31,7 +31,7 @@ the template's plus `@tauri-apps/*` and `better-auth`.
 ```
 api/worker.js       Worker entry: serves dist/ and routes /api/*
 api/lib/            routes.js (handlers), records.js (streaks, comparisons), cycle.js (the wipe),
-                    limits.js (free-tier guard), preview.js, auth.js
+                    limits.js (free-tier guard), gate.js (the site lock), preview.js, auth.js
 api/migrations/     SQL migrations: the only schema source
 src/App.svelte      the shell; src/views/ screens, src/components/, src/lib/, src/styles/ (all colors)
 src/tauri/          native shell
@@ -73,10 +73,15 @@ the new schema during a deploy.
 
 ## Sign-in providers
 
-Sign-in is closed while 40 is a work in progress: `SIGN_IN` is `"off"` in `wrangler.jsonc`, so the Worker
-refuses every sign-in and sign-up, and the sign-in screen shows the waitlist instead. The waitlist posts to the
-DOGS API Worker (`api.dogs.red/waitlist`), which keeps the addresses in its own D1 database. Set `SIGN_IN` to
-`"on"` to open the doors. Previews stay open, so the demo account still works there.
+40 is locked while it is a work in progress (`api/lib/gate.js`): the app opens on a "coming soon" screen whose
+only way forward is the site password, and without it the Worker refuses the whole API, so nobody can sign in,
+make an account or read anything. The password is the `SITE_PASSWORD` secret
+(`npx wrangler secret put SITE_PASSWORD`, or `.dev.vars` locally), never a value in this repository; with no
+secret set nothing unlocks. Previews are not behind it: their only way in is already the demo account's password.
+
+Behind the password, the sign-in screen also offers **demo mode** (`src/lib/demo.js`): the whole app on the
+dummy data set in `src/lib/demo.json` (the same one `npm run seed:preview` loads into staging), held in memory
+for the tab. It sends and saves nothing.
 
 Email and password always work. Each provider turns on by itself once its secrets exist
 (`npx wrangler secret put <NAME>`); register `https://40.dogs.red/api/auth/callback/<provider>` as the

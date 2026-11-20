@@ -8,8 +8,9 @@
   import SquareTerminal from '@lucide/svelte/icons/square-terminal';
   import User from '@lucide/svelte/icons/user';
   import Auth from './components/Auth.svelte';
+  import Lock from './components/Lock.svelte';
   import Timer from './components/Timer.svelte';
-  import { WIPE_HABITS_COPY, app, loadSession } from '#lib/app.svelte.js';
+  import { WIPE_HABITS_COPY, app, loadSession, signOut } from '#lib/app.svelte.js';
   import { href, route } from '#lib/router.svelte.js';
   import Feed from './views/Feed.svelte';
   import Memories from './views/Memories.svelte';
@@ -62,6 +63,8 @@
     <p class="font-mono text-sm uppercase text-ember" role="alert">&gt; {app.down}</p>
     <button class="btn-quiet" onclick={loadSession}>Try again</button>
   </div>
+{:else if app.locked}
+  <Lock />
 {:else if !app.user}
   <Auth />
 {:else}
@@ -97,6 +100,12 @@
     </aside>
 
     <main class="min-w-0 flex-1 border-line pb-24 md:border-r md:pb-0">
+      {#if app.demo}
+        <p class="flex items-center justify-between gap-3 bg-ember px-4 py-1.5 font-mono text-xs font-bold uppercase tracking-widest text-ink lg:px-6">
+          <span>Demo: sample data, nothing is saved</span>
+          <button class="underline" onclick={signOut}>Exit</button>
+        </p>
+      {/if}
       <header class="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-ink/90 px-4 py-3 backdrop-blur-md lg:px-6 lg:py-4">
         <h1 class="font-mono text-lg text-moss lg:text-xl">/ROOT/{route.name.toUpperCase()}</h1>
         <a href={href('track')} class="logo-box h-8 w-8 text-sm" aria-label="40, home">40</a>

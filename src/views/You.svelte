@@ -182,4 +182,4 @@
   </div>
 </section>
 
-<button class="btn-quiet mt-3 w-full" onclick={signOut}>Sign out</button>
+<button class="btn-quiet mt-3 w-full" onclick={signOut}>{app.demo ? 'Exit the demo' : 'Sign out'}</button>

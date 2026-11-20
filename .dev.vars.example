@@ -4,6 +4,9 @@
 # Any long random string: node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 BETTER_AUTH_SECRET=
 
+# The site lock's password (api/lib/gate.js). Without it nothing unlocks.
+SITE_PASSWORD=
+
 # Only for `npm run seed:preview`: the demo account password. Must match the Previews secret
 # (npx wrangler preview base-config secret put PREVIEW_PASSWORD).
 DEMO_PASSWORD=
